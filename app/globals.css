@@ -16,34 +16,32 @@ body {
 }
 
 body {
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 button {
   font-family: inherit;
 }
 
-/* APP */
 .radar-app {
-  position: relative;
   width: 100vw;
-  height: 100vh;
+  min-height: 100vh;
   background: #020611;
   color: white;
   overflow: hidden;
 }
 
 /* SIDEBAR DESKTOP */
+
 .radar-sidebar {
   position: fixed;
   left: 0;
   top: 0;
-  width: 96px !important;
-  min-width: 96px !important;
-  max-width: 96px !important;
+  width: 148px;
+  min-width: 148px;
   height: 100vh;
   z-index: 50;
-  padding: 22px 10px;
+  padding: 22px 12px;
   background: rgba(2, 7, 17, 0.96);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
@@ -51,86 +49,84 @@ button {
 
 .radar-brand {
   display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  width: 100%;
-  padding: 10px 4px 24px;
-  margin: 0;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 32px;
 }
 
 .radar-brand-icon {
   color: #ff1732;
-  font-size: 12px;
+  font-size: 18px;
   line-height: 1;
-  margin-top: 2px;
   flex-shrink: 0;
 }
 
-.radar-brand-main,
-.radar-brand-red {
-  font-size: 10px;
-  line-height: 1.05;
-  letter-spacing: 1.1px;
-  font-weight: 950;
-  word-break: break-word;
-}
-
 .radar-brand-main {
-  color: #ffffff;
+  font-size: 13px;
+  line-height: 0.95;
+  font-weight: 950;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
 }
 
 .radar-brand-red {
-  color: #ff3148;
-  margin-top: 2px;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 0.95;
+  font-weight: 950;
+  letter-spacing: 0.4px;
+  color: #ff1732;
+  white-space: nowrap;
 }
 
 .radar-nav {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .radar-nav-item {
   width: 100%;
   min-height: 52px;
-  padding: 9px 8px;
+  padding: 9px 10px;
   border: 1px solid transparent;
   border-radius: 14px;
   background: transparent;
   color: rgba(255, 255, 255, 0.82);
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
+  gap: 9px;
   cursor: pointer;
   text-align: left;
 }
 
 .radar-nav-item.active {
   background: rgba(255, 23, 50, 0.17);
-  border-color: rgba(255, 23, 50, 0.46);
+  border-color: rgba(255, 23, 50, 0.36);
   color: white;
+  box-shadow: 0 14px 35px rgba(255, 23, 50, 0.16);
 }
 
 .radar-nav-icon {
   width: 18px;
   min-width: 18px;
-  font-size: 14px;
+  font-size: 15px;
   text-align: center;
 }
 
 .radar-nav-label {
-  font-size: 10px;
-  line-height: 1.05;
+  font-size: 11.5px;
+  line-height: 1.15;
   font-weight: 950;
-  letter-spacing: 0.15px;
+  letter-spacing: 0.3px;
 }
 
 /* MAIN DESKTOP */
+
 .radar-main {
   position: relative;
-  margin-left: 96px;
-  width: calc(100vw - 96px);
+  margin-left: 148px;
+  width: calc(100vw - 148px);
   height: 100vh;
   overflow: hidden;
   background: #020611;
@@ -149,19 +145,19 @@ button {
 
 .radar-header {
   position: absolute;
-  top: 32px;
-  left: 42px;
+  top: 28px;
+  left: 72px;
   z-index: 10;
   pointer-events: none;
 }
 
 .radar-header h1 {
   margin: 0;
-  max-width: 780px;
-  font-size: clamp(46px, 4.4vw, 72px);
-  line-height: 0.9;
+  max-width: 700px;
+  font-size: 56px;
+  line-height: 0.92;
   font-weight: 950;
-  letter-spacing: -2px;
+  letter-spacing: -1.5px;
 }
 
 .radar-header h1 span {
@@ -170,21 +166,22 @@ button {
 
 .radar-header p {
   margin: 14px 0 0;
-  max-width: 560px;
+  max-width: 520px;
   color: rgba(255, 255, 255, 0.72);
   font-size: 14px;
   line-height: 1.45;
 }
 
 /* TOP ACTIONS */
+
 .radar-top-actions {
   position: absolute;
-  top: 22px;
-  right: 24px;
+  top: 20px;
+  right: 22px;
   z-index: 20;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .radar-live {
@@ -199,7 +196,6 @@ button {
   font-size: 13px;
   font-weight: 900;
   backdrop-filter: blur(14px);
-  white-space: nowrap;
 }
 
 .radar-live span {
@@ -235,13 +231,13 @@ button {
   font-weight: 950;
   cursor: pointer;
   box-shadow: 0 0 22px rgba(255, 23, 50, 0.35);
-  white-space: nowrap;
 }
 
 /* LEGEND */
+
 .radar-legend {
   position: absolute;
-  top: 106px;
+  top: 108px;
   right: 24px;
   width: 220px;
   z-index: 12;
@@ -289,6 +285,7 @@ button {
 }
 
 /* DETAILS PANEL */
+
 .radar-details {
   position: absolute;
   right: 26px;
@@ -366,10 +363,11 @@ button {
 }
 
 /* BOTTOM STATS */
+
 .radar-bottom {
   position: absolute;
-  left: 24px;
-  right: 24px;
+  left: 28px;
+  right: 28px;
   bottom: 22px;
   z-index: 16;
   display: grid;
@@ -433,48 +431,65 @@ button {
 }
 
 /* TABLET */
-@media (max-width: 1200px) {
-  .radar-details {
-    display: none;
+
+@media (max-width: 1100px) {
+  .radar-sidebar {
+    width: 120px;
+    min-width: 120px;
+  }
+
+  .radar-main {
+    margin-left: 120px;
+    width: calc(100vw - 120px);
+  }
+
+  .radar-brand-main,
+  .radar-brand-red {
+    font-size: 11px;
+  }
+
+  .radar-nav-label {
+    font-size: 10px;
   }
 
   .radar-bottom {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .radar-header {
-    left: 34px;
-  }
-
-  .radar-header h1 {
-    font-size: 50px;
+  .radar-details {
+    display: none;
   }
 }
 
 /* MOBILE */
-@media screen and (max-width: 1200px) {
+
+@media (max-width: 768px) {
   html,
   body {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    height: auto !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    background: #020611 !important;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .radar-app {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    height: auto !important;
-    min-height: 100vh !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    display: block !important;
-    padding-bottom: 86px !important;
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: #020611;
   }
+
+  .radar-main {
+    position: relative;
+    margin-left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100vh;
+    overflow: visible !important;
+    padding: 64px 12px 120px;
+    background: #020611;
+  }
+
+  /* MOBILE BOTTOM NAV */
 
   .radar-sidebar {
     position: fixed !important;
@@ -484,16 +499,16 @@ button {
     top: auto !important;
     width: 100% !important;
     min-width: 0 !important;
-    max-width: 100% !important;
-    height: 76px !important;
-    padding: 0 !important;
-    z-index: 9999 !important;
+    max-width: none !important;
+    height: 88px !important;
+    z-index: 999 !important;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom)) !important;
+    border-right: none !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background: rgba(2, 6, 17, 0.96) !important;
+    backdrop-filter: blur(18px);
     overflow-x: auto !important;
     overflow-y: hidden !important;
-    border-right: none !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.14) !important;
-    background: rgba(2, 6, 17, 0.98) !important;
-    backdrop-filter: blur(18px) !important;
   }
 
   .radar-brand {
@@ -501,358 +516,415 @@ button {
   }
 
   .radar-nav {
-    height: 76px !important;
-    width: max-content !important;
-    min-width: 100% !important;
     display: flex !important;
     flex-direction: row !important;
-    align-items: center !important;
-    gap: 8px !important;
-    padding: 8px 10px !important;
+    gap: 9px !important;
+    height: 100% !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
+    padding: 0 !important;
+    scrollbar-width: none;
+  }
+
+  .radar-nav::-webkit-scrollbar {
+    display: none;
   }
 
   .radar-nav-item {
-    width: 86px !important;
-    min-width: 86px !important;
-    max-width: 86px !important;
-    height: 58px !important;
-    min-height: 58px !important;
-    padding: 7px 6px !important;
-    border-radius: 16px !important;
-    display: flex !important;
+    width: auto !important;
+    min-width: 96px !important;
+    height: 68px !important;
+    min-height: 68px !important;
+    flex: 0 0 auto !important;
+    padding: 8px 10px !important;
+    border-radius: 18px !important;
     flex-direction: column !important;
     justify-content: center !important;
     align-items: center !important;
-    gap: 4px !important;
+    gap: 5px !important;
     text-align: center !important;
   }
 
   .radar-nav-icon {
     width: auto !important;
     min-width: 0 !important;
-    font-size: 16px !important;
+    font-size: 22px !important;
     line-height: 1 !important;
   }
 
   .radar-nav-label {
-    font-size: 8.5px !important;
+    font-size: 10px !important;
     line-height: 1.05 !important;
     text-align: center !important;
     white-space: normal !important;
   }
 
-  .radar-main {
-    position: relative !important;
-    margin-left: 0 !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    height: auto !important;
-    min-height: 100vh !important;
-    padding: 18px 14px 100px !important;
-    overflow-x: hidden !important;
-    overflow-y: visible !important;
-    background: #020611 !important;
-  }
+  /* MOBILE HEADER */
 
   .radar-header {
     position: relative !important;
     top: auto !important;
     left: auto !important;
-    right: auto !important;
-    z-index: 30 !important;
-    margin: 0 0 12px !important;
-    max-width: 100% !important;
+    z-index: 20 !important;
     pointer-events: auto !important;
+    margin-bottom: 20px;
   }
 
   .radar-header h1 {
-    font-size: 38px !important;
+    max-width: 100%;
+    font-size: clamp(42px, 12vw, 66px) !important;
     line-height: 0.95 !important;
-    letter-spacing: -1.5px !important;
-    max-width: 100% !important;
+    letter-spacing: -2.2px !important;
   }
 
   .radar-header p {
-    max-width: 100% !important;
-    font-size: 12px !important;
+    max-width: 100%;
+    margin-top: 16px;
+    font-size: 15px !important;
     line-height: 1.45 !important;
+    color: rgba(255, 255, 255, 0.72);
   }
+
+  /* MOBILE ACTIONS */
 
   .radar-top-actions {
     position: relative !important;
     top: auto !important;
     right: auto !important;
-    left: auto !important;
-    z-index: 40 !important;
-    display: flex !important;
-    gap: 8px !important;
-    margin: 0 0 12px !important;
+    z-index: 20 !important;
+    display: grid !important;
+    grid-template-columns: 1fr 58px auto;
+    gap: 10px !important;
+    width: 100%;
+    margin-bottom: 16px;
   }
 
   .radar-live {
-    height: 36px !important;
-    padding: 0 10px !important;
-    font-size: 10px !important;
-    border-radius: 12px !important;
+    width: 100%;
+    height: 56px !important;
+    border-radius: 20px !important;
+    padding: 0 18px !important;
+    font-size: 15px !important;
   }
 
   .radar-live small {
-    display: none !important;
+    display: none;
   }
 
   .radar-bell {
-    width: 38px !important;
-    height: 36px !important;
-    border-radius: 12px !important;
+    width: 58px !important;
+    height: 56px !important;
+    border-radius: 20px !important;
+    font-size: 18px;
   }
 
   .radar-alert {
-    height: 36px !important;
-    padding: 0 13px !important;
-    font-size: 10px !important;
-    border-radius: 12px !important;
+    height: 56px !important;
+    padding: 0 18px !important;
+    border-radius: 20px !important;
+    font-size: 14px !important;
   }
+
+  /* MOBILE LEGEND */
 
   .radar-legend {
     position: relative !important;
     top: auto !important;
     right: auto !important;
-    left: auto !important;
+    z-index: 20 !important;
     width: 100% !important;
-    z-index: 35 !important;
-    padding: 14px !important;
-    margin: 0 0 12px !important;
-    border-radius: 18px !important;
+    margin-bottom: 20px;
+    padding: 22px !important;
+    border-radius: 28px !important;
+    background: rgba(0, 0, 0, 0.62);
   }
 
   .radar-legend h3 {
-    font-size: 15px !important;
-    margin-bottom: 10px !important;
+    font-size: 22px !important;
+    margin-bottom: 18px;
   }
 
   .radar-legend div {
-    font-size: 12px !important;
-    margin: 8px 0 !important;
+    font-size: 16px !important;
+    line-height: 1.25;
+    gap: 14px;
   }
 
-  /* FIXED MOBILE GLOBE — no more 4:3 wide look */
+  .dot {
+    width: 15px;
+    height: 15px;
+  }
+
+  /* MOBILE GLOBE - NAJWAŻNIEJSZA POPRAWKA */
+
   .radar-globe {
     position: relative !important;
     inset: auto !important;
-    z-index: 5 !important;
-    width: min(100%, 360px) !important;
-    height: 360px !important;
-    min-height: 360px !important;
-    max-height: 360px !important;
-    margin: 0 auto 14px !important;
+    z-index: 10 !important;
+
+    width: min(92vw, 430px) !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1 !important;
+
+    min-height: 0 !important;
+    max-height: none !important;
+
+    margin: 0 auto 20px !important;
     overflow: hidden !important;
-    border-radius: 24px !important;
-    background: #020611 !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+
+    border-radius: 30px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background: #000 !important;
   }
 
   .radar-globe > div {
-    width: 360px !important;
-    height: 360px !important;
-    max-width: 100% !important;
-    margin: 0 auto !important;
+    width: 100% !important;
+    height: 100% !important;
   }
 
   .radar-globe canvas {
-    width: 360px !important;
-    height: 360px !important;
-    max-width: 100% !important;
-    margin: 0 auto !important;
+    width: 100% !important;
+    height: 100% !important;
     display: block !important;
   }
+
+  /* MOBILE DETAILS */
 
   .radar-details {
     display: block !important;
     position: relative !important;
     right: auto !important;
     top: auto !important;
-    left: auto !important;
     transform: none !important;
-    z-index: 30 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    max-height: none !important;
-    margin: 0 0 14px !important;
-    padding: 18px !important;
-    border-radius: 22px !important;
-    overflow: visible !important;
-    background: rgba(0, 0, 0, 0.72) !important;
-  }
+    z-index: 20 !important;
 
-  .radar-details h2 {
-    font-size: 22px !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+
+    margin: 0 0 20px !important;
+    padding: 22px !important;
+    border-radius: 28px !important;
+    overflow: visible !important;
+    background: rgba(0, 0, 0, 0.72);
   }
 
   .details-kicker {
-    font-size: 11px !important;
-    letter-spacing: 2.4px !important;
-    margin-bottom: 10px !important;
+    font-size: 12px;
+    letter-spacing: 4px;
+  }
+
+  .radar-details h2 {
+    font-size: 34px !important;
+    line-height: 1.05 !important;
   }
 
   .details-subtitle {
-    font-size: 12px !important;
-    margin: 8px 0 14px !important;
+    font-size: 15px;
   }
 
   .details-grid {
     grid-template-columns: 1fr 1fr !important;
-    gap: 10px !important;
+    gap: 12px !important;
   }
 
   .details-grid div {
-    padding: 12px !important;
+    padding: 16px;
+    border-radius: 18px;
   }
 
   .details-grid strong {
-    font-size: 24px !important;
+    font-size: 34px;
   }
 
   .details-box,
   .details-text {
-    font-size: 12px !important;
+    font-size: 14px;
   }
+
+  /* MOBILE STATS */
 
   .radar-bottom {
     position: relative !important;
     left: auto !important;
     right: auto !important;
     bottom: auto !important;
-    z-index: 30 !important;
-    width: 100% !important;
-    max-width: 100% !important;
+    z-index: 20 !important;
+
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 10px !important;
+    gap: 12px !important;
+
+    width: 100% !important;
     margin: 0 !important;
-    padding: 12px !important;
-    border-radius: 22px !important;
+    padding: 0 !important;
+
+    background: transparent !important;
+    border: 0 !important;
+    backdrop-filter: none !important;
   }
 
   .radar-stat {
-    min-height: 120px !important;
-    padding: 14px !important;
-    border-radius: 18px !important;
+    min-height: 165px !important;
+    padding: 22px !important;
+    border-radius: 26px !important;
+    background:
+      radial-gradient(circle at 80% 45%, rgba(255, 255, 255, 0.09), transparent 35%),
+      rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.13);
   }
 
   .radar-stat span {
-    font-size: 22px !important;
-    margin-bottom: 8px !important;
+    font-size: 28px;
+    margin-bottom: 12px;
   }
 
   .radar-stat strong {
-    font-size: 36px !important;
-    line-height: 0.95 !important;
+    font-size: 52px !important;
+    line-height: 0.9;
   }
 
   .radar-stat p {
-    font-size: 11px !important;
-    line-height: 1.1 !important;
+    font-size: 16px !important;
+    line-height: 1.08;
+    margin-top: 12px;
   }
 
   .radar-stat small {
-    font-size: 11px !important;
-    line-height: 1.2 !important;
+    display: block;
+    margin-top: 8px;
+    font-size: 15px !important;
+    line-height: 1.35;
   }
 
   .radar-feed {
     grid-column: 1 / -1 !important;
-    font-size: 12px !important;
-    line-height: 1.45 !important;
-    padding: 14px !important;
-    border-radius: 16px !important;
+    padding: 20px !important;
+    border-radius: 24px !important;
+    background: rgba(0, 0, 0, 0.58);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    font-size: 17px !important;
+    line-height: 1.4 !important;
   }
 
   .radar-feed b {
-    display: block !important;
-    margin: 0 0 6px !important;
+    display: inline;
+    margin-right: 8px;
   }
 }
 
 /* SMALL PHONES */
-@media screen and (max-width: 430px) {
+
+@media (max-width: 420px) {
   .radar-main {
-    padding: 14px 10px 96px !important;
+    padding: 56px 10px 118px;
   }
 
   .radar-header h1 {
-    font-size: 34px !important;
+    font-size: 40px !important;
   }
 
   .radar-header p {
-    font-size: 11.5px !important;
+    font-size: 14px !important;
   }
 
   .radar-top-actions {
-    gap: 6px !important;
+    grid-template-columns: 1fr 52px auto;
+    gap: 8px !important;
   }
 
-  .radar-live {
-    height: 38px !important;
-    font-size: 10px !important;
-    padding: 0 10px !important;
+  .radar-live,
+  .radar-bell,
+  .radar-alert {
+    height: 52px !important;
   }
 
   .radar-bell {
-    width: 38px !important;
-    height: 38px !important;
+    width: 52px !important;
   }
 
   .radar-alert {
-    height: 38px !important;
-    padding: 0 11px !important;
-    font-size: 10px !important;
+    padding: 0 14px !important;
+    font-size: 12px !important;
+  }
+
+  .radar-legend {
+    padding: 18px !important;
+  }
+
+  .radar-legend h3 {
+    font-size: 20px !important;
+  }
+
+  .radar-legend div {
+    font-size: 14px !important;
   }
 
   .radar-globe {
-    width: min(100%, 330px) !important;
-    height: 330px !important;
-    min-height: 330px !important;
-    max-height: 330px !important;
-    margin: 0 auto 14px !important;
+    width: min(90vw, 360px) !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 26px !important;
   }
 
-  .radar-globe > div {
-    width: 330px !important;
-    height: 330px !important;
-    max-width: 100% !important;
+  .radar-details {
+    padding: 20px !important;
   }
 
-  .radar-globe canvas {
-    width: 330px !important;
-    height: 330px !important;
-    max-width: 100% !important;
+  .radar-details h2 {
+    font-size: 30px !important;
   }
 
   .radar-bottom {
     grid-template-columns: 1fr 1fr !important;
-    gap: 8px !important;
-    padding: 10px !important;
+    gap: 10px !important;
   }
 
   .radar-stat {
-    min-height: 116px !important;
-    padding: 12px !important;
+    min-height: 148px !important;
+    padding: 18px !important;
   }
 
   .radar-stat strong {
-    font-size: 32px !important;
+    font-size: 44px !important;
+  }
+
+  .radar-stat p {
+    font-size: 13px !important;
+  }
+
+  .radar-stat small {
+    font-size: 13px !important;
   }
 
   .radar-nav-item {
-    width: 80px !important;
-    min-width: 80px !important;
-    max-width: 80px !important;
+    min-width: 90px !important;
+  }
+
+  .radar-nav-icon {
+    font-size: 21px !important;
   }
 
   .radar-nav-label {
-    font-size: 8px !important;
+    font-size: 9px !important;
+  }
+}
+
+/* VERY SMALL PHONES */
+
+@media (max-width: 360px) {
+  .radar-header h1 {
+    font-size: 36px !important;
+  }
+
+  .radar-globe {
+    width: 88vw !important;
+  }
+
+  .radar-bottom {
+    grid-template-columns: 1fr !important;
+  }
+
+  .radar-stat {
+    min-height: 130px !important;
   }
 }
