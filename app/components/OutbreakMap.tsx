@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import dynamic from "next/dynamic";
 
-const Globe = dynamic(() => import("react-globe.gl"), {
+const Globe = dynamic<any>(() => import("react-globe.gl"), {
   ssr: false,
 });
 
@@ -226,6 +226,13 @@ function mapApiCity(item: any, index: number): CityPoint {
 
 export default function OutbreakMap() {
   const globeRef = useRef<any>(null);
+  const globeContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const [globeSize, setGlobeSize] = useState({
+    width: 700,
+    height: 700,
+    isMobile: false,
+  });
 
   const [countries, setCountries] = useState<any[]>([]);
   const [trackedCities, setTrackedCities] = useState<CityPoint[]>(fallbackCities);
@@ -256,6 +263,54 @@ export default function OutbreakMap() {
       totalDeaths: activeCities.reduce((sum, city) => sum + city.deaths, 0),
     };
   }, [activeCities, infectedCountries, trackedCities]);
+
+  useEffect(() => {
+    function updateGlobeSize() {
+      const box = globeContainerRef.current;
+      if (!box) return;
+
+      const isMobile = window.innerWidth <= 768;
+      const boxWidth = box.clientWidth;
+      const boxHeight = box.clientHeight;
+
+      if (isMobile) {
+        const safeSize = Math.min(boxWidth, boxHeight, 330);
+
+        setGlobeSize({
+          width: safeSize,
+          height: safeSize,
+          isMobile: true,
+        });
+
+        return;
+      }
+
+      const safeSize = Math.min(boxWidth, boxHeight, 850);
+
+      setGlobeSize({
+        width: safeSize,
+        height: safeSize,
+        isMobile: false,
+      });
+    }
+
+    updateGlobeSize();
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateGlobeSize();
+    });
+
+    if (globeContainerRef.current) {
+      resizeObserver.observe(globeContainerRef.current);
+    }
+
+    window.addEventListener("resize", updateGlobeSize);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateGlobeSize);
+    };
+  }, []);
 
   function findCountryInfo(countryName: string) {
     const normalized = normalizeCountryName(countryName);
@@ -406,13 +461,13 @@ export default function OutbreakMap() {
 
     globeRef.current.pointOfView(
       {
-        lat: 46,
-        lng: 9,
-        altitude: 2.15,
+        lat: globeSize.isMobile ? -18 : 46,
+        lng: globeSize.isMobile ? -52 : 9,
+        altitude: globeSize.isMobile ? 3.35 : 2.15,
       },
-      1200
+      700
     );
-  }, []);
+  }, [globeSize.width, globeSize.height, globeSize.isMobile]);
 
   function handleCountryClick(feature: any) {
     const name = getFeatureName(feature);
@@ -544,32 +599,36 @@ export default function OutbreakMap() {
           </div>
         </div>
 
-        <div className="radar-globe">
-          <Globe
-            ref={globeRef}
-            globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-            bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-            backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-            polygonsData={countries}
-            polygonCapColor={(feature: any) =>
-              getCountryColor(getFeatureName(feature))
-            }
-            polygonSideColor={() => "rgba(255, 23, 50, 0.08)"}
-            polygonStrokeColor={(feature: any) =>
-              getCountryStroke(getFeatureName(feature))
-            }
-            polygonAltitude={(feature: any) =>
-              getCountryAltitude(getFeatureName(feature))
-            }
-            onPolygonClick={handleCountryClick}
-            pointsData={trackedCities.filter((city) => city.cases > 0)}
-            pointLat="lat"
-            pointLng="lng"
-            pointAltitude={0.025}
-            pointRadius={(city: any) => getCityDotSize(city)}
-            pointColor={(city: any) => getCityDotColor(city)}
-            onPointClick={(city: any) => handleCityClick(city)}
-          />
+        <div className="radar-globe" ref={globeContainerRef}>
+          <div className="radar-globe-inner">
+            <Globe
+              ref={globeRef}
+              width={globeSize.width}
+              height={globeSize.height}
+              globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+              bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+              backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
+              polygonsData={countries}
+              polygonCapColor={(feature: any) =>
+                getCountryColor(getFeatureName(feature))
+              }
+              polygonSideColor={() => "rgba(255, 23, 50, 0.08)"}
+              polygonStrokeColor={(feature: any) =>
+                getCountryStroke(getFeatureName(feature))
+              }
+              polygonAltitude={(feature: any) =>
+                getCountryAltitude(getFeatureName(feature))
+              }
+              onPolygonClick={handleCountryClick}
+              pointsData={trackedCities.filter((city) => city.cases > 0)}
+              pointLat="lat"
+              pointLng="lng"
+              pointAltitude={0.025}
+              pointRadius={(city: any) => getCityDotSize(city)}
+              pointColor={(city: any) => getCityDotColor(city)}
+              onPointClick={(city: any) => handleCityClick(city)}
+            />
+          </div>
         </div>
 
         <aside className="radar-details">

@@ -927,4 +927,94 @@ button {
   .radar-stat {
     min-height: 130px !important;
   }
+}/* FINAL MOBILE GLOBE FIX */
+
+.radar-globe {
+  overflow: hidden !important;
+}
+
+.radar-globe-inner {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+.radar-globe-inner > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.radar-globe canvas {
+  display: block !important;
+  margin: 0 auto !important;
+}
+
+@media (max-width: 768px) {
+  html,
+  body {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .radar-app {
+    width: 100% !important;
+    min-height: 100vh !important;
+    height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .radar-main {
+    width: 100% !important;
+    margin-left: 0 !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+    padding: 26px 24px 150px !important;
+  }
+
+  .radar-globe {
+    position: relative !important;
+    width: 100% !important;
+    height: 360px !important;
+    min-height: 360px !important;
+    max-height: 360px !important;
+    margin: 26px auto 22px !important;
+    border-radius: 32px !important;
+    overflow: hidden !important;
+    background: #020611 !important;
+    border: 1px solid rgba(255, 255, 255, 0.11) !important;
+  }
+
+  .radar-globe-inner {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+
+  .radar-globe canvas {
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .radar-main {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+
+  .radar-globe {
+    height: 340px !important;
+    min-height: 340px !important;
+    max-height: 340px !important;
+  }
 }
