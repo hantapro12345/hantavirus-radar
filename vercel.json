@@ -1,8 +1,8 @@
 {
-    "crons": [
-      {
-        "path": "/api/scan-outbreaks",
-        "schedule": "0 * * * *"
-      }
-    ]
-  }
+  "crons": [
+    {
+      "path": "/api/scan-outbreaks?secret=hantavirus_radar_secret_123456789",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}
