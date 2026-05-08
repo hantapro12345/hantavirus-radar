@@ -1,0 +1,8 @@
+{
+    "crons": [
+      {
+        "path": "/api/scan-outbreaks",
+        "schedule": "0 * * * *"
+      }
+    ]
+  }
