@@ -35,8 +35,7 @@ type CountryInfo = {
   summary: string;
 };
 
-const outbreakSource =
-  "Public health report / verified news monitoring";
+const outbreakSource = "Public health report / verified news monitoring";
 
 const fallbackCities: CityPoint[] = [
   {
@@ -338,10 +337,30 @@ export default function OutbreakMap() {
           const mapped = rawCities.map(mapApiCity);
 
           setTrackedCities(mapped);
-          setSelectedCity(mapped[0]);
+
+          setSelectedCity((currentSelectedCity) => {
+            if (!currentSelectedCity) return mapped[0];
+
+            const stillExists = mapped.find(
+              (city) =>
+                city.city === currentSelectedCity.city &&
+                city.country === currentSelectedCity.country
+            );
+
+            return stillExists || mapped[0];
+          });
 
           const countryList = buildCountries(mapped);
-          setSelectedCountry(countryList[0] || null);
+
+          setSelectedCountry((currentSelectedCountry) => {
+            if (!currentSelectedCountry) return countryList[0] || null;
+
+            const stillExists = countryList.find(
+              (country) => country.country === currentSelectedCountry.country
+            );
+
+            return stillExists || countryList[0] || null;
+          });
         }
       } catch {
         setTrackedCities(fallbackCities);
@@ -351,6 +370,10 @@ export default function OutbreakMap() {
     }
 
     loadData();
+
+    const refreshInterval = setInterval(() => {
+      loadData();
+    }, 5 * 60 * 1000);
 
     fetch(
       "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson"
@@ -362,6 +385,10 @@ export default function OutbreakMap() {
       .catch(() => {
         setCountries([]);
       });
+
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, []);
 
   useEffect(() => {
@@ -739,7 +766,9 @@ function renderTabContent(
         <InfoCard
           title="Current verified app data"
           body={[
-            `Active verified signals: ${trackedCities.filter((city) => city.cases > 0).length}`,
+            `Active verified signals: ${
+              trackedCities.filter((city) => city.cases > 0).length
+            }`,
             `Countries with stored verified signals: ${infectedCountries.length}`,
             `Tracked outbreak city dots: ${trackedCities.length}`,
             "Current app mode: verified-only database",
