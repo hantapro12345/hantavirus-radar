@@ -170,7 +170,6 @@ function buildCountries(cities: CityPoint[]): CountryInfo[] {
     }
 
     const item = map.get(key)!;
-
     item.cases += city.cases;
     item.deaths += city.deaths;
 
@@ -225,10 +224,13 @@ function mapApiCity(item: any, index: number): CityPoint {
 
 export default function OutbreakMap() {
   const globeRef = useRef<any>(null);
-  const globeFrameRef = useRef<HTMLDivElement | null>(null);
+  const globeWrapRef = useRef<HTMLDivElement | null>(null);
 
   const [countries, setCountries] = useState<any[]>([]);
-  const [globeSize, setGlobeSize] = useState({ width: 760, height: 760 });
+  const [globeSize, setGlobeSize] = useState({
+    width: 700,
+    height: 700,
+  });
 
   const [trackedCities, setTrackedCities] = useState<CityPoint[]>(fallbackCities);
   const [selectedCity, setSelectedCity] = useState<CityPoint | null>(
@@ -367,32 +369,32 @@ export default function OutbreakMap() {
 
   useEffect(() => {
     function updateGlobeSize() {
-      const frame = globeFrameRef.current;
+      const box = globeWrapRef.current;
 
-      if (!frame) {
-        return;
-      }
+      if (!box) return;
 
-      const rect = frame.getBoundingClientRect();
+      const rect = box.getBoundingClientRect();
 
       setGlobeSize({
-        width: Math.floor(rect.width),
-        height: Math.floor(rect.height),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
       });
     }
 
     updateGlobeSize();
 
-    const resizeObserver = new ResizeObserver(updateGlobeSize);
+    const observer = new ResizeObserver(() => {
+      updateGlobeSize();
+    });
 
-    if (globeFrameRef.current) {
-      resizeObserver.observe(globeFrameRef.current);
+    if (globeWrapRef.current) {
+      observer.observe(globeWrapRef.current);
     }
 
     window.addEventListener("resize", updateGlobeSize);
 
     return () => {
-      resizeObserver.disconnect();
+      observer.disconnect();
       window.removeEventListener("resize", updateGlobeSize);
     };
   }, []);
@@ -408,7 +410,7 @@ export default function OutbreakMap() {
       controls.dampingFactor = 0.08;
       controls.rotateSpeed = 0.55;
       controls.zoomSpeed = 0.7;
-      controls.minDistance = 140;
+      controls.minDistance = 120;
       controls.maxDistance = 1200;
     }
 
@@ -418,19 +420,19 @@ export default function OutbreakMap() {
       globeRef.current.pointOfView(
         {
           lat: 28,
-          lng: 12,
-          altitude: 4.6,
+          lng: 5,
+          altitude: 2.75,
         },
-        900
+        800
       );
     } else {
       globeRef.current.pointOfView(
         {
-          lat: 46,
-          lng: 9,
-          altitude: 2.25,
+          lat: 24,
+          lng: -20,
+          altitude: 2.15,
         },
-        1200
+        900
       );
     }
   }, [globeSize.width, globeSize.height, countries.length]);
@@ -551,37 +553,35 @@ export default function OutbreakMap() {
           </div>
         </div>
 
-        <div className="radar-globe">
-          <div className="radar-globe-frame" ref={globeFrameRef}>
-            <div className="radar-globe-stage">
-              <Globe
-                ref={globeRef}
-                width={globeSize.width}
-                height={globeSize.height}
-                globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-                bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-                backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-                polygonsData={countries}
-                polygonCapColor={(feature: any) =>
-                  getCountryColor(getFeatureName(feature))
-                }
-                polygonSideColor={() => "rgba(255, 23, 50, 0.08)"}
-                polygonStrokeColor={(feature: any) =>
-                  getCountryStroke(getFeatureName(feature))
-                }
-                polygonAltitude={(feature: any) =>
-                  getCountryAltitude(getFeatureName(feature))
-                }
-                onPolygonClick={handleCountryClick}
-                pointsData={trackedCities.filter((city) => city.cases > 0)}
-                pointLat="lat"
-                pointLng="lng"
-                pointAltitude={0.025}
-                pointRadius={(city: any) => getCityDotSize(city)}
-                pointColor={(city: any) => getCityDotColor(city)}
-                onPointClick={(city: any) => handleCityClick(city)}
-              />
-            </div>
+        <div className="radar-globe" ref={globeWrapRef}>
+          <div className="radar-globe-stage">
+            <Globe
+              ref={globeRef}
+              width={globeSize.width}
+              height={globeSize.height}
+              globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+              bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+              backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
+              polygonsData={countries}
+              polygonCapColor={(feature: any) =>
+                getCountryColor(getFeatureName(feature))
+              }
+              polygonSideColor={() => "rgba(255, 23, 50, 0.08)"}
+              polygonStrokeColor={(feature: any) =>
+                getCountryStroke(getFeatureName(feature))
+              }
+              polygonAltitude={(feature: any) =>
+                getCountryAltitude(getFeatureName(feature))
+              }
+              onPolygonClick={handleCountryClick}
+              pointsData={trackedCities.filter((city) => city.cases > 0)}
+              pointLat="lat"
+              pointLng="lng"
+              pointAltitude={0.025}
+              pointRadius={(city: any) => getCityDotSize(city)}
+              pointColor={(city: any) => getCityDotColor(city)}
+              onPointClick={(city: any) => handleCityClick(city)}
+            />
           </div>
         </div>
 
