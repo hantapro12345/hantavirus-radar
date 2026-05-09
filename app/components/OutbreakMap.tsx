@@ -225,10 +225,10 @@ function mapApiCity(item: any, index: number): CityPoint {
 
 export default function OutbreakMap() {
   const globeRef = useRef<any>(null);
-  const globeWrapRef = useRef<HTMLDivElement | null>(null);
+  const globeFrameRef = useRef<HTMLDivElement | null>(null);
 
   const [countries, setCountries] = useState<any[]>([]);
-  const [globePixelSize, setGlobePixelSize] = useState(640);
+  const [globeSize, setGlobeSize] = useState({ width: 760, height: 760 });
 
   const [trackedCities, setTrackedCities] = useState<CityPoint[]>(fallbackCities);
   const [selectedCity, setSelectedCity] = useState<CityPoint | null>(
@@ -367,24 +367,32 @@ export default function OutbreakMap() {
 
   useEffect(() => {
     function updateGlobeSize() {
-      const box = globeWrapRef.current;
-      const boxWidth = box?.clientWidth || window.innerWidth;
-      const isMobile = window.innerWidth <= 768;
+      const frame = globeFrameRef.current;
 
-      if (isMobile) {
-        // mały canvas, żeby kula zawsze była w ramce
-        const size = Math.min(Math.max(boxWidth - 90, 220), 250);
-        setGlobePixelSize(size);
-      } else {
-        const size = Math.min(Math.max(boxWidth * 0.52, 560), 780);
-        setGlobePixelSize(size);
+      if (!frame) {
+        return;
       }
+
+      const rect = frame.getBoundingClientRect();
+
+      setGlobeSize({
+        width: Math.floor(rect.width),
+        height: Math.floor(rect.height),
+      });
     }
 
     updateGlobeSize();
+
+    const resizeObserver = new ResizeObserver(updateGlobeSize);
+
+    if (globeFrameRef.current) {
+      resizeObserver.observe(globeFrameRef.current);
+    }
+
     window.addEventListener("resize", updateGlobeSize);
 
     return () => {
+      resizeObserver.disconnect();
       window.removeEventListener("resize", updateGlobeSize);
     };
   }, []);
@@ -401,34 +409,31 @@ export default function OutbreakMap() {
       controls.rotateSpeed = 0.55;
       controls.zoomSpeed = 0.7;
       controls.minDistance = 140;
-      controls.maxDistance = 900;
+      controls.maxDistance = 1200;
     }
 
     const isMobile = window.innerWidth <= 768;
 
     if (isMobile) {
-      // tu jest najważniejsza poprawka:
-      // niższa szerokość globusa + wyższa altitude + niższy lat
-      // żeby globus był w środku ramki i nie był ucięty
       globeRef.current.pointOfView(
         {
-          lat: 20,
-          lng: 8,
-          altitude: 6.8,
+          lat: 28,
+          lng: 12,
+          altitude: 4.6,
         },
-        1000
+        900
       );
     } else {
       globeRef.current.pointOfView(
         {
           lat: 46,
           lng: 9,
-          altitude: 2.15,
+          altitude: 2.25,
         },
         1200
       );
     }
-  }, [globePixelSize, countries.length]);
+  }, [globeSize.width, globeSize.height, countries.length]);
 
   function handleCountryClick(feature: any) {
     const name = getFeatureName(feature);
@@ -546,35 +551,37 @@ export default function OutbreakMap() {
           </div>
         </div>
 
-        <div className="radar-globe" ref={globeWrapRef}>
-          <div className="radar-globe-stage">
-            <Globe
-              ref={globeRef}
-              width={globePixelSize}
-              height={globePixelSize}
-              globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-              bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-              backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-              polygonsData={countries}
-              polygonCapColor={(feature: any) =>
-                getCountryColor(getFeatureName(feature))
-              }
-              polygonSideColor={() => "rgba(255, 23, 50, 0.08)"}
-              polygonStrokeColor={(feature: any) =>
-                getCountryStroke(getFeatureName(feature))
-              }
-              polygonAltitude={(feature: any) =>
-                getCountryAltitude(getFeatureName(feature))
-              }
-              onPolygonClick={handleCountryClick}
-              pointsData={trackedCities.filter((city) => city.cases > 0)}
-              pointLat="lat"
-              pointLng="lng"
-              pointAltitude={0.025}
-              pointRadius={(city: any) => getCityDotSize(city)}
-              pointColor={(city: any) => getCityDotColor(city)}
-              onPointClick={(city: any) => handleCityClick(city)}
-            />
+        <div className="radar-globe">
+          <div className="radar-globe-frame" ref={globeFrameRef}>
+            <div className="radar-globe-stage">
+              <Globe
+                ref={globeRef}
+                width={globeSize.width}
+                height={globeSize.height}
+                globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+                bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+                backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
+                polygonsData={countries}
+                polygonCapColor={(feature: any) =>
+                  getCountryColor(getFeatureName(feature))
+                }
+                polygonSideColor={() => "rgba(255, 23, 50, 0.08)"}
+                polygonStrokeColor={(feature: any) =>
+                  getCountryStroke(getFeatureName(feature))
+                }
+                polygonAltitude={(feature: any) =>
+                  getCountryAltitude(getFeatureName(feature))
+                }
+                onPolygonClick={handleCountryClick}
+                pointsData={trackedCities.filter((city) => city.cases > 0)}
+                pointLat="lat"
+                pointLng="lng"
+                pointAltitude={0.025}
+                pointRadius={(city: any) => getCityDotSize(city)}
+                pointColor={(city: any) => getCityDotColor(city)}
+                onPointClick={(city: any) => handleCityClick(city)}
+              />
+            </div>
           </div>
         </div>
 

@@ -41,8 +41,7 @@ button {
   height: 100vh;
   z-index: 50;
   padding: 22px 12px;
-  background:
-    linear-gradient(180deg, rgba(3, 7, 18, 0.98), rgba(2, 6, 17, 0.98));
+  background: linear-gradient(180deg, rgba(3, 7, 18, 0.98), rgba(2, 6, 17, 0.98));
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 18px 0 45px rgba(0, 0, 0, 0.28);
 }
@@ -106,8 +105,7 @@ button {
 }
 
 .radar-nav-item.active {
-  background:
-    linear-gradient(135deg, rgba(255, 23, 50, 0.22), rgba(255, 23, 50, 0.08));
+  background: linear-gradient(135deg, rgba(255, 23, 50, 0.22), rgba(255, 23, 50, 0.08));
   border-color: rgba(255, 23, 50, 0.65);
   color: white;
   box-shadow: 0 14px 35px rgba(255, 23, 50, 0.16);
@@ -142,6 +140,8 @@ button {
   background: #020611;
 }
 
+/* GLOBE */
+
 .radar-globe {
   position: absolute;
   inset: 0;
@@ -152,14 +152,27 @@ button {
   overflow: hidden;
 }
 
+.radar-globe-frame {
+  width: min(47vw, 760px);
+  height: min(47vw, 760px);
+  min-width: 560px;
+  min-height: 560px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
 .radar-globe-stage {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .radar-globe canvas {
-  display: block;
+  display: block !important;
 }
 
 /* HEADER */
@@ -514,8 +527,7 @@ button {
 }
 
 .info-card {
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 24px;
   padding: 24px;
@@ -711,7 +723,7 @@ button {
     height: auto;
     overflow-x: hidden;
     overflow-y: auto;
-    padding-bottom: 115px;
+    padding-bottom: 120px;
   }
 
   .radar-sidebar {
@@ -868,13 +880,24 @@ button {
     min-width: 15px;
   }
 
-  /* TU JEST KLUCZOWA POPRAWKA DLA GLOBUSA */
   .radar-globe {
     position: relative;
     inset: auto;
-    width: min(100%, 360px);
-    height: 360px;
-    margin: 0 auto 24px;
+    width: 100%;
+    height: auto;
+    margin: 0 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  .radar-globe-frame {
+    width: min(100%, 390px);
+    height: min(calc(100vw - 24px), 390px);
+    min-width: 0;
+    min-height: 0;
+    aspect-ratio: 1 / 1;
     border-radius: 28px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     background: #020611;
@@ -887,10 +910,10 @@ button {
   .radar-globe-stage {
     width: 100%;
     height: 100%;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0;
   }
 
   .radar-globe-stage > div {
@@ -1050,9 +1073,9 @@ button {
     padding-right: 10px;
   }
 
-  .radar-globe {
-    width: min(100%, 340px);
-    height: 340px;
+  .radar-globe-frame {
+    width: min(100%, 360px);
+    height: min(calc(100vw - 20px), 360px);
   }
 
   .radar-stat {
@@ -1082,13 +1105,13 @@ button {
     min-width: 100px;
   }
 
-  .radar-globe {
-    width: min(100%, 320px);
-    height: 320px;
+  .radar-globe-frame {
+    width: min(100%, 335px);
+    height: min(calc(100vw - 20px), 335px);
   }
-}/* =========================================================
-   FINAL DESKTOP FIX — restores desktop globe layout
-   ========================================================= */
+}
+
+/* DESKTOP RESET */
 
 @media (min-width: 769px) {
   html,
@@ -1117,7 +1140,6 @@ button {
     height: 100vh !important;
     padding: 22px 12px !important;
     overflow: hidden !important;
-    background: rgba(2, 7, 17, 0.96) !important;
     border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
     border-top: none !important;
     z-index: 50 !important;
@@ -1169,8 +1191,6 @@ button {
     inset: 0 !important;
     width: 100% !important;
     height: 100% !important;
-    min-height: 100% !important;
-    max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
     border-radius: 0 !important;
@@ -1179,13 +1199,15 @@ button {
     background: transparent !important;
   }
 
-  .radar-globe canvas {
-    display: block !important;
-    width: 100% !important;
-    height: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
+  .radar-globe-frame {
+    width: min(47vw, 760px) !important;
+    height: min(47vw, 760px) !important;
+    min-width: 560px !important;
+    min-height: 560px !important;
+    border: none !important;
     border-radius: 0 !important;
+    background: transparent !important;
+    overflow: hidden !important;
   }
 
   .radar-header {
