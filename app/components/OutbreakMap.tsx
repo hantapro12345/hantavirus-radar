@@ -105,8 +105,7 @@ const fallbackCities: CityPoint[] = [
     status: "confirmed",
     source: outbreakSource,
     lastUpdate: "2026-05-08",
-    summary:
-      "Confirmed cruise-ship-related hantavirus signal connected with Argentina.",
+    summary: "Confirmed cruise-ship-related hantavirus signal connected with Argentina.",
   },
 ];
 
@@ -170,6 +169,7 @@ function buildCountries(cities: CityPoint[]): CountryInfo[] {
     }
 
     const item = map.get(key)!;
+
     item.cases += city.cases;
     item.deaths += city.deaths;
 
@@ -228,14 +228,12 @@ export default function OutbreakMap() {
 
   const [countries, setCountries] = useState<any[]>([]);
   const [globeSize, setGlobeSize] = useState({
-    width: 700,
-    height: 700,
+    width: 900,
+    height: 900,
   });
 
   const [trackedCities, setTrackedCities] = useState<CityPoint[]>(fallbackCities);
-  const [selectedCity, setSelectedCity] = useState<CityPoint | null>(
-    fallbackCities[0]
-  );
+  const [selectedCity, setSelectedCity] = useState<CityPoint | null>(fallbackCities[0]);
   const [selectedCountry, setSelectedCountry] = useState<CountryInfo | null>(
     buildCountries(fallbackCities)[0]
   );
@@ -355,9 +353,7 @@ export default function OutbreakMap() {
 
     loadData();
 
-    fetch(
-      "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson"
-    )
+    fetch("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
       .then((response) => response.json())
       .then((data) => {
         setCountries(data.features || []);
@@ -371,17 +367,35 @@ export default function OutbreakMap() {
     function updateGlobeSize() {
       const box = globeWrapRef.current;
 
-      if (!box) return;
+      if (!box) {
+        return;
+      }
 
-      const rect = box.getBoundingClientRect();
+      const isMobile = window.innerWidth <= 768;
+      const boxWidth = box.clientWidth;
+      const boxHeight = box.clientHeight;
+
+      if (isMobile) {
+        const size = Math.floor(Math.min(boxWidth, boxHeight));
+
+        setGlobeSize({
+          width: size,
+          height: size,
+        });
+
+        return;
+      }
 
       setGlobeSize({
-        width: Math.round(rect.width),
-        height: Math.round(rect.height),
+        width: Math.floor(boxWidth),
+        height: Math.floor(boxHeight),
       });
     }
 
     updateGlobeSize();
+
+    const timeoutOne = window.setTimeout(updateGlobeSize, 100);
+    const timeoutTwo = window.setTimeout(updateGlobeSize, 500);
 
     const observer = new ResizeObserver(() => {
       updateGlobeSize();
@@ -394,6 +408,8 @@ export default function OutbreakMap() {
     window.addEventListener("resize", updateGlobeSize);
 
     return () => {
+      window.clearTimeout(timeoutOne);
+      window.clearTimeout(timeoutTwo);
       observer.disconnect();
       window.removeEventListener("resize", updateGlobeSize);
     };
@@ -410,7 +426,7 @@ export default function OutbreakMap() {
       controls.dampingFactor = 0.08;
       controls.rotateSpeed = 0.55;
       controls.zoomSpeed = 0.7;
-      controls.minDistance = 120;
+      controls.minDistance = 140;
       controls.maxDistance = 1200;
     }
 
@@ -419,20 +435,20 @@ export default function OutbreakMap() {
     if (isMobile) {
       globeRef.current.pointOfView(
         {
-          lat: 28,
-          lng: 5,
-          altitude: 2.75,
+          lat: 32,
+          lng: 8,
+          altitude: 4.25,
         },
-        800
+        900
       );
     } else {
       globeRef.current.pointOfView(
         {
-          lat: 24,
-          lng: -20,
-          altitude: 2.15,
+          lat: 32,
+          lng: -18,
+          altitude: 2.35,
         },
-        900
+        1100
       );
     }
   }, [globeSize.width, globeSize.height, countries.length]);
@@ -506,15 +522,40 @@ export default function OutbreakMap() {
       </aside>
 
       <section className="radar-main">
+        <div className="radar-globe" ref={globeWrapRef}>
+          <div className="radar-globe-stage">
+            <Globe
+              ref={globeRef}
+              width={globeSize.width}
+              height={globeSize.height}
+              globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+              bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+              backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
+              polygonsData={countries}
+              polygonCapColor={(feature: any) => getCountryColor(getFeatureName(feature))}
+              polygonSideColor={() => "rgba(255, 23, 50, 0.08)"}
+              polygonStrokeColor={(feature: any) => getCountryStroke(getFeatureName(feature))}
+              polygonAltitude={(feature: any) => getCountryAltitude(getFeatureName(feature))}
+              onPolygonClick={handleCountryClick}
+              pointsData={trackedCities.filter((city) => city.cases > 0)}
+              pointLat="lat"
+              pointLng="lng"
+              pointAltitude={0.025}
+              pointRadius={(city: any) => getCityDotSize(city)}
+              pointColor={(city: any) => getCityDotColor(city)}
+              onPointClick={(city: any) => handleCityClick(city)}
+            />
+          </div>
+        </div>
+
         <div className="radar-header">
           <h1>
             Hantavirus <span>Radar</span>
           </h1>
 
           <p>
-            Verified country overlays and clickable outbreak dots. Click any
-            country to view country statistics. Click any red dot to view city
-            details.
+            Verified country overlays and clickable outbreak dots. Click any country to view country
+            statistics. Click any red dot to view city details.
           </p>
         </div>
 
@@ -528,11 +569,7 @@ export default function OutbreakMap() {
             🔔
           </button>
 
-          <button
-            className="radar-alert"
-            type="button"
-            onClick={() => setAlertsOpen(true)}
-          >
+          <button className="radar-alert" type="button" onClick={() => setAlertsOpen(true)}>
             GET ALERTS
           </button>
         </div>
@@ -550,38 +587,6 @@ export default function OutbreakMap() {
 
           <div>
             <span className="dot gray"></span> No verified data
-          </div>
-        </div>
-
-        <div className="radar-globe" ref={globeWrapRef}>
-          <div className="radar-globe-stage">
-            <Globe
-              ref={globeRef}
-              width={globeSize.width}
-              height={globeSize.height}
-              globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-              bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-              backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-              polygonsData={countries}
-              polygonCapColor={(feature: any) =>
-                getCountryColor(getFeatureName(feature))
-              }
-              polygonSideColor={() => "rgba(255, 23, 50, 0.08)"}
-              polygonStrokeColor={(feature: any) =>
-                getCountryStroke(getFeatureName(feature))
-              }
-              polygonAltitude={(feature: any) =>
-                getCountryAltitude(getFeatureName(feature))
-              }
-              onPolygonClick={handleCountryClick}
-              pointsData={trackedCities.filter((city) => city.cases > 0)}
-              pointLat="lat"
-              pointLng="lng"
-              pointAltitude={0.025}
-              pointRadius={(city: any) => getCityDotSize(city)}
-              pointColor={(city: any) => getCityDotColor(city)}
-              onPointClick={(city: any) => handleCityClick(city)}
-            />
           </div>
         </div>
 
@@ -687,8 +692,8 @@ export default function OutbreakMap() {
 
           <div className="radar-feed">
             <b>• LIVE FEED</b>
-            Supabase source monitoring active. Click any country to view country
-            statistics. Click red city dots to view city details.
+            Supabase source monitoring active. Click any country to view country statistics. Click
+            red city dots to view city details.
           </div>
         </section>
 
@@ -727,9 +732,8 @@ export default function OutbreakMap() {
               <h2>Instant outbreak alerts</h2>
 
               <p>
-                Get notified when a new verified hantavirus signal appears in
-                the database. Designed for travelers, researchers and people who
-                want early public-health awareness.
+                Get notified when a new verified hantavirus signal appears in the database. Designed
+                for travelers, researchers and people who want early public-health awareness.
               </p>
 
               <div className="alert-price-box">
@@ -753,8 +757,7 @@ export default function OutbreakMap() {
               </button>
 
               <p className="alert-fine">
-                Payment system will be connected later. This button is currently
-                a product preview.
+                Payment system will be connected later. This button is currently a product preview.
               </p>
             </div>
           </section>
