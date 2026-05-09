@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
 import dynamic from "next/dynamic";
 
-const Globe = dynamic<any>(() => import("react-globe.gl"), {
+const Globe = dynamic(() => import("react-globe.gl"), {
   ssr: false,
 });
 
@@ -49,7 +48,7 @@ const fallbackCities: CityPoint[] = [
     deaths: 0,
     status: "confirmed",
     source: outbreakSource,
-    lastUpdate: "2026-05-07",
+    lastUpdate: "2026-05-08",
     summary: "Confirmed hantavirus case connected with cruise ship travel.",
   },
   {
@@ -63,7 +62,7 @@ const fallbackCities: CityPoint[] = [
     deaths: 0,
     status: "confirmed",
     source: outbreakSource,
-    lastUpdate: "2026-05-07",
+    lastUpdate: "2026-05-08",
     summary: "Confirmed hantavirus case connected with cruise ship travel.",
   },
   {
@@ -77,7 +76,7 @@ const fallbackCities: CityPoint[] = [
     deaths: 0,
     status: "confirmed",
     source: outbreakSource,
-    lastUpdate: "2026-05-07",
+    lastUpdate: "2026-05-08",
     summary: "Confirmed hantavirus case connected with cruise ship travel.",
   },
   {
@@ -91,7 +90,7 @@ const fallbackCities: CityPoint[] = [
     deaths: 0,
     status: "confirmed",
     source: outbreakSource,
-    lastUpdate: "2026-05-07",
+    lastUpdate: "2026-05-08",
     summary: "Confirmed hantavirus case connected with cruise ship travel.",
   },
   {
@@ -105,7 +104,7 @@ const fallbackCities: CityPoint[] = [
     deaths: 0,
     status: "confirmed",
     source: outbreakSource,
-    lastUpdate: "2026-05-07",
+    lastUpdate: "2026-05-08",
     summary:
       "Confirmed cruise-ship-related hantavirus signal connected with Argentina.",
   },
@@ -138,7 +137,7 @@ function normalizeCountryName(name: string) {
     republicofserbia: "Serbia",
   };
 
-  return aliases[clean] || name;
+  return aliases[clean] || name.trim();
 }
 
 function getFeatureName(feature: any) {
@@ -226,15 +225,11 @@ function mapApiCity(item: any, index: number): CityPoint {
 
 export default function OutbreakMap() {
   const globeRef = useRef<any>(null);
-  const globeContainerRef = useRef<HTMLDivElement | null>(null);
-
-  const [globeSize, setGlobeSize] = useState({
-    width: 700,
-    height: 700,
-    isMobile: false,
-  });
+  const globeWrapRef = useRef<HTMLDivElement | null>(null);
 
   const [countries, setCountries] = useState<any[]>([]);
+  const [globePixelSize, setGlobePixelSize] = useState(640);
+
   const [trackedCities, setTrackedCities] = useState<CityPoint[]>(fallbackCities);
   const [selectedCity, setSelectedCity] = useState<CityPoint | null>(
     fallbackCities[0]
@@ -263,54 +258,6 @@ export default function OutbreakMap() {
       totalDeaths: activeCities.reduce((sum, city) => sum + city.deaths, 0),
     };
   }, [activeCities, infectedCountries, trackedCities]);
-
-  useEffect(() => {
-    function updateGlobeSize() {
-      const box = globeContainerRef.current;
-      if (!box) return;
-
-      const isMobile = window.innerWidth <= 768;
-      const boxWidth = box.clientWidth;
-      const boxHeight = box.clientHeight;
-
-      if (isMobile) {
-        const safeSize = Math.min(boxWidth, boxHeight, 330);
-
-        setGlobeSize({
-          width: safeSize,
-          height: safeSize,
-          isMobile: true,
-        });
-
-        return;
-      }
-
-      const safeSize = Math.min(boxWidth, boxHeight, 850);
-
-      setGlobeSize({
-        width: safeSize,
-        height: safeSize,
-        isMobile: false,
-      });
-    }
-
-    updateGlobeSize();
-
-    const resizeObserver = new ResizeObserver(() => {
-      updateGlobeSize();
-    });
-
-    if (globeContainerRef.current) {
-      resizeObserver.observe(globeContainerRef.current);
-    }
-
-    window.addEventListener("resize", updateGlobeSize);
-
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", updateGlobeSize);
-    };
-  }, []);
 
   function findCountryInfo(countryName: string) {
     const normalized = normalizeCountryName(countryName);
@@ -392,30 +339,10 @@ export default function OutbreakMap() {
           const mapped = rawCities.map(mapApiCity);
 
           setTrackedCities(mapped);
-
-          setSelectedCity((currentSelectedCity) => {
-            if (!currentSelectedCity) return mapped[0];
-
-            const stillExists = mapped.find(
-              (city) =>
-                city.city === currentSelectedCity.city &&
-                city.country === currentSelectedCity.country
-            );
-
-            return stillExists || mapped[0];
-          });
+          setSelectedCity(mapped[0]);
 
           const countryList = buildCountries(mapped);
-
-          setSelectedCountry((currentSelectedCountry) => {
-            if (!currentSelectedCountry) return countryList[0] || null;
-
-            const stillExists = countryList.find(
-              (country) => country.country === currentSelectedCountry.country
-            );
-
-            return stillExists || countryList[0] || null;
-          });
+          setSelectedCountry(countryList[0] || null);
         }
       } catch {
         setTrackedCities(fallbackCities);
@@ -425,10 +352,6 @@ export default function OutbreakMap() {
     }
 
     loadData();
-
-    const refreshInterval = setInterval(() => {
-      loadData();
-    }, 5 * 60 * 1000);
 
     fetch(
       "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson"
@@ -440,9 +363,29 @@ export default function OutbreakMap() {
       .catch(() => {
         setCountries([]);
       });
+  }, []);
+
+  useEffect(() => {
+    function updateGlobeSize() {
+      const box = globeWrapRef.current;
+      const boxWidth = box?.clientWidth || window.innerWidth;
+      const isMobile = window.innerWidth <= 768;
+
+      if (isMobile) {
+        // mały canvas, żeby kula zawsze była w ramce
+        const size = Math.min(Math.max(boxWidth - 90, 220), 250);
+        setGlobePixelSize(size);
+      } else {
+        const size = Math.min(Math.max(boxWidth * 0.52, 560), 780);
+        setGlobePixelSize(size);
+      }
+    }
+
+    updateGlobeSize();
+    window.addEventListener("resize", updateGlobeSize);
 
     return () => {
-      clearInterval(refreshInterval);
+      window.removeEventListener("resize", updateGlobeSize);
     };
   }, []);
 
@@ -457,17 +400,35 @@ export default function OutbreakMap() {
       controls.dampingFactor = 0.08;
       controls.rotateSpeed = 0.55;
       controls.zoomSpeed = 0.7;
+      controls.minDistance = 140;
+      controls.maxDistance = 900;
     }
 
-    globeRef.current.pointOfView(
-      {
-        lat: globeSize.isMobile ? -18 : 46,
-        lng: globeSize.isMobile ? -52 : 9,
-        altitude: globeSize.isMobile ? 3.35 : 2.15,
-      },
-      700
-    );
-  }, [globeSize.width, globeSize.height, globeSize.isMobile]);
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+      // tu jest najważniejsza poprawka:
+      // niższa szerokość globusa + wyższa altitude + niższy lat
+      // żeby globus był w środku ramki i nie był ucięty
+      globeRef.current.pointOfView(
+        {
+          lat: 20,
+          lng: 8,
+          altitude: 6.8,
+        },
+        1000
+      );
+    } else {
+      globeRef.current.pointOfView(
+        {
+          lat: 46,
+          lng: 9,
+          altitude: 2.15,
+        },
+        1200
+      );
+    }
+  }, [globePixelSize, countries.length]);
 
   function handleCountryClick(feature: any) {
     const name = getFeatureName(feature);
@@ -498,7 +459,6 @@ export default function OutbreakMap() {
     setSelectedCity(city);
 
     const country = findCountryInfo(city.country) || null;
-
     setSelectedCountry(country);
   }
 
@@ -509,24 +469,17 @@ export default function OutbreakMap() {
 
   return (
     <main className="radar-app">
-      <aside className="radar-sidebar" style={sidebarStyle}>
-        <div className="radar-brand" style={smallBrandStyle}>
-          <div className="radar-brand-icon" style={smallBrandIconStyle}>
-            ☣
-          </div>
+      <aside className="radar-sidebar">
+        <div className="radar-brand">
+          <div className="radar-brand-icon">☣</div>
 
-          <div style={{ minWidth: 0 }}>
-            <div className="radar-brand-main" style={smallBrandMainStyle}>
-              HANTAVIRUS
-            </div>
-
-            <div className="radar-brand-red" style={smallBrandRedStyle}>
-              RADAR
-            </div>
+          <div>
+            <div className="radar-brand-main">HANTAVIRUS</div>
+            <div className="radar-brand-red">RADAR</div>
           </div>
         </div>
 
-        <nav className="radar-nav" style={navStyle}>
+        <nav className="radar-nav">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
 
@@ -536,15 +489,9 @@ export default function OutbreakMap() {
                 type="button"
                 onClick={() => setActiveTab(item.id)}
                 className={`radar-nav-item ${isActive ? "active" : ""}`}
-                style={getNavButtonStyle(isActive)}
               >
-                <span className="radar-nav-icon" style={navIconStyle}>
-                  {item.icon}
-                </span>
-
-                <span className="radar-nav-label" style={navLabelStyle}>
-                  {item.label}
-                </span>
+                <span className="radar-nav-icon">{item.icon}</span>
+                <span className="radar-nav-label">{item.label}</span>
               </button>
             );
           })}
@@ -599,12 +546,12 @@ export default function OutbreakMap() {
           </div>
         </div>
 
-        <div className="radar-globe" ref={globeContainerRef}>
-          <div className="radar-globe-inner">
+        <div className="radar-globe" ref={globeWrapRef}>
+          <div className="radar-globe-stage">
             <Globe
               ref={globeRef}
-              width={globeSize.width}
-              height={globeSize.height}
+              width={globePixelSize}
+              height={globePixelSize}
               globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
               bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
               backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
@@ -739,70 +686,66 @@ export default function OutbreakMap() {
         </section>
 
         {activeTab !== "map" && (
-          <section style={overlayStyle}>
-            <div style={overlayHeaderStyle}>
+          <section className="radar-overlay">
+            <div className="radar-overlay-header">
               <div>
-                <div style={kickerStyle}>HANTAVIRUS RADAR</div>
-                <h2 style={overlayTitleStyle}>{getTabTitle()}</h2>
+                <div className="radar-overlay-kicker">HANTAVIRUS RADAR</div>
+                <h2>{getTabTitle()}</h2>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab("map")}
-                style={closeButtonStyle}
-              >
+              <button type="button" onClick={() => setActiveTab("map")}>
                 ✕ CLOSE
               </button>
             </div>
 
-            <div style={overlayContentStyle}>
+            <div className="radar-overlay-content">
               {renderTabContent(activeTab, trackedCities, infectedCountries)}
             </div>
           </section>
         )}
 
         {alertsOpen && (
-          <section style={alertBackdropStyle}>
-            <div style={alertModalStyle}>
+          <section className="alert-backdrop">
+            <div className="alert-modal">
               <button
                 type="button"
                 onClick={() => setAlertsOpen(false)}
-                style={alertCloseStyle}
+                className="alert-close"
               >
                 ✕
               </button>
 
-              <div style={alertKickerStyle}>HANTAVIRUS RADAR PRO</div>
+              <div className="alert-kicker">HANTAVIRUS RADAR PRO</div>
 
-              <h2 style={alertTitleStyle}>Instant outbreak alerts</h2>
+              <h2>Instant outbreak alerts</h2>
 
-              <p style={alertTextStyle}>
+              <p>
                 Get notified when a new verified hantavirus signal appears in
                 the database. Designed for travelers, researchers and people who
                 want early public-health awareness.
               </p>
 
-              <div style={alertPriceBoxStyle}>
+              <div className="alert-price-box">
                 <div>
-                  <small style={alertSmallStyle}>Monthly plan</small>
-                  <strong style={alertPriceStyle}>$1</strong>
+                  <small>Monthly plan</small>
+                  <strong>$1</strong>
                 </div>
 
-                <span style={alertBadgeStyle}>Early access</span>
+                <span>Early access</span>
               </div>
 
-              <div style={alertFeaturesStyle}>
+              <div className="alert-features">
                 <div>✓ New country alerts</div>
                 <div>✓ New city signal alerts</div>
                 <div>✓ Source and date included</div>
                 <div>✓ Verified-only monitoring mode</div>
               </div>
 
-              <button type="button" style={alertBuyButtonStyle}>
+              <button type="button" className="alert-buy">
                 BUY ALERTS
               </button>
 
-              <p style={alertFinePrintStyle}>
+              <p className="alert-fine">
                 Payment system will be connected later. This button is currently
                 a product preview.
               </p>
@@ -821,7 +764,7 @@ function renderTabContent(
 ) {
   if (activeTab === "statistics") {
     return (
-      <div style={gridStyle}>
+      <div className="info-grid">
         <InfoCard
           title="Current verified app data"
           body={[
@@ -855,7 +798,7 @@ function renderTabContent(
 
   if (activeTab === "signals") {
     return (
-      <div style={gridStyle}>
+      <div className="info-grid">
         {trackedCities.map((city) => (
           <InfoCard
             key={city.id}
@@ -875,7 +818,7 @@ function renderTabContent(
 
   if (activeTab === "symptoms") {
     return (
-      <div style={gridStyle}>
+      <div className="info-grid">
         <InfoCard
           title="Early symptoms"
           body={[
@@ -914,7 +857,7 @@ function renderTabContent(
 
   if (activeTab === "prevention") {
     return (
-      <div style={gridStyle}>
+      <div className="info-grid">
         <InfoCard
           title="Main prevention rule"
           body={[
@@ -949,7 +892,7 @@ function renderTabContent(
 
   if (activeTab === "sources") {
     return (
-      <div style={gridStyle}>
+      <div className="info-grid">
         <InfoCard
           title="Sources to use"
           body={[
@@ -985,7 +928,7 @@ function renderTabContent(
 
   if (activeTab === "faq") {
     return (
-      <div style={gridStyle}>
+      <div className="info-grid">
         <InfoCard
           title="Why does a country show red?"
           body={[
@@ -1016,7 +959,7 @@ function renderTabContent(
 
   if (activeTab === "about") {
     return (
-      <div style={gridStyle}>
+      <div className="info-grid">
         <InfoCard
           title="What is Hantavirus Radar?"
           body={[
@@ -1052,322 +995,14 @@ function renderTabContent(
 
 function InfoCard({ title, body }: { title: string; body: string[] }) {
   return (
-    <article style={cardStyle}>
-      <h3 style={cardTitleStyle}>{title}</h3>
+    <article className="info-card">
+      <h3>{title}</h3>
 
-      <ul style={listStyle}>
+      <ul>
         {body.map((item) => (
-          <li key={item} style={listItemStyle}>
-            {item}
-          </li>
+          <li key={item}>{item}</li>
         ))}
       </ul>
     </article>
   );
 }
-
-const sidebarStyle: CSSProperties = {
-  width: 172,
-  minWidth: 172,
-  maxWidth: 172,
-  overflow: "hidden",
-  background:
-    "linear-gradient(180deg, rgba(3,7,18,0.98), rgba(2,6,17,0.98))",
-  borderRight: "1px solid rgba(255,255,255,0.08)",
-  boxShadow: "18px 0 45px rgba(0,0,0,0.28)",
-  zIndex: 60,
-};
-
-const smallBrandStyle: CSSProperties = {
-  width: "100%",
-  display: "flex",
-  gap: 9,
-  padding: "18px 12px 20px",
-  alignItems: "center",
-  overflow: "hidden",
-};
-
-const smallBrandIconStyle: CSSProperties = {
-  fontSize: 14,
-  width: 20,
-  height: 20,
-  minWidth: 20,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: "#ff1732",
-};
-
-const smallBrandMainStyle: CSSProperties = {
-  fontSize: 12,
-  lineHeight: 1,
-  letterSpacing: 0.5,
-  whiteSpace: "nowrap",
-  fontWeight: 950,
-  color: "white",
-};
-
-const smallBrandRedStyle: CSSProperties = {
-  fontSize: 12,
-  lineHeight: 1.05,
-  letterSpacing: 0.5,
-  whiteSpace: "nowrap",
-  fontWeight: 950,
-  color: "#ff1732",
-};
-
-const navStyle: CSSProperties = {
-  display: "grid",
-  gap: 12,
-  padding: "14px 12px",
-};
-
-function getNavButtonStyle(isActive: boolean): CSSProperties {
-  return {
-    width: "100%",
-    minHeight: 58,
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "12px 12px",
-    borderRadius: 16,
-    border: isActive
-      ? "1px solid rgba(255,23,50,0.65)"
-      : "1px solid transparent",
-    background: isActive
-      ? "linear-gradient(135deg, rgba(255,23,50,0.22), rgba(255,23,50,0.08))"
-      : "transparent",
-    color: "white",
-    cursor: "pointer",
-    textAlign: "left",
-    boxShadow: isActive ? "0 14px 35px rgba(255,23,50,0.16)" : "none",
-  };
-}
-
-const navIconStyle: CSSProperties = {
-  width: 22,
-  minWidth: 22,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: 15,
-};
-
-const navLabelStyle: CSSProperties = {
-  display: "block",
-  color: "rgba(255,255,255,0.92)",
-  fontSize: 12,
-  lineHeight: 1.05,
-  fontWeight: 950,
-  letterSpacing: 0.1,
-  whiteSpace: "normal",
-  overflow: "visible",
-  textOverflow: "clip",
-};
-
-const overlayStyle: CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  zIndex: 50,
-  background:
-    "radial-gradient(circle at top left, rgba(255,23,50,0.18), transparent 34%), rgba(2,6,17,0.96)",
-  backdropFilter: "blur(18px)",
-  padding: "34px 42px 34px 42px",
-  overflowY: "auto",
-};
-
-const overlayHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 24,
-  marginBottom: 28,
-};
-
-const kickerStyle: CSSProperties = {
-  color: "#ff3148",
-  fontSize: 12,
-  fontWeight: 950,
-  letterSpacing: 4,
-  marginBottom: 10,
-};
-
-const overlayTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "clamp(38px, 5vw, 72px)",
-  lineHeight: 0.95,
-  fontWeight: 950,
-  letterSpacing: -2,
-};
-
-const closeButtonStyle: CSSProperties = {
-  border: "1px solid rgba(255,255,255,0.16)",
-  background: "rgba(255,255,255,0.06)",
-  color: "white",
-  borderRadius: 16,
-  padding: "14px 18px",
-  cursor: "pointer",
-  fontSize: 12,
-  fontWeight: 950,
-};
-
-const overlayContentStyle: CSSProperties = {
-  maxWidth: 1200,
-};
-
-const gridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-  gap: 18,
-};
-
-const cardStyle: CSSProperties = {
-  background:
-    "linear-gradient(135deg, rgba(255,255,255,0.09), rgba(255,255,255,0.035))",
-  border: "1px solid rgba(255,255,255,0.13)",
-  borderRadius: 24,
-  padding: 24,
-  boxShadow: "0 24px 70px rgba(0,0,0,0.28)",
-};
-
-const cardTitleStyle: CSSProperties = {
-  margin: "0 0 16px",
-  fontSize: 22,
-  fontWeight: 950,
-};
-
-const listStyle: CSSProperties = {
-  margin: 0,
-  paddingLeft: 18,
-  display: "grid",
-  gap: 10,
-};
-
-const listItemStyle: CSSProperties = {
-  color: "rgba(255,255,255,0.78)",
-  fontSize: 14,
-  lineHeight: 1.55,
-};
-
-const alertBackdropStyle: CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  zIndex: 90,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 24,
-  background: "rgba(0,0,0,0.68)",
-  backdropFilter: "blur(12px)",
-};
-
-const alertModalStyle: CSSProperties = {
-  position: "relative",
-  width: "min(520px, 92vw)",
-  borderRadius: 32,
-  padding: 34,
-  background:
-    "radial-gradient(circle at top left, rgba(255,23,50,0.28), transparent 38%), linear-gradient(135deg, rgba(18,24,38,0.98), rgba(5,8,16,0.98))",
-  border: "1px solid rgba(255,255,255,0.14)",
-  color: "white",
-  boxShadow: "0 40px 120px rgba(0,0,0,0.65)",
-};
-
-const alertCloseStyle: CSSProperties = {
-  position: "absolute",
-  top: 18,
-  right: 18,
-  width: 38,
-  height: 38,
-  borderRadius: 999,
-  border: "1px solid rgba(255,255,255,0.14)",
-  background: "rgba(255,255,255,0.06)",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: 900,
-};
-
-const alertKickerStyle: CSSProperties = {
-  color: "#ff3148",
-  fontSize: 12,
-  fontWeight: 950,
-  letterSpacing: 4,
-  marginBottom: 12,
-};
-
-const alertTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: "clamp(34px, 5vw, 58px)",
-  lineHeight: 0.92,
-  letterSpacing: -2,
-  fontWeight: 950,
-};
-
-const alertTextStyle: CSSProperties = {
-  margin: "18px 0 22px",
-  color: "rgba(255,255,255,0.72)",
-  fontSize: 15,
-  lineHeight: 1.55,
-};
-
-const alertPriceBoxStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 18,
-  padding: 18,
-  borderRadius: 22,
-  background: "rgba(255,255,255,0.07)",
-  border: "1px solid rgba(255,255,255,0.12)",
-  marginBottom: 20,
-};
-
-const alertSmallStyle: CSSProperties = {
-  display: "block",
-  color: "rgba(255,255,255,0.6)",
-  fontSize: 12,
-  marginBottom: 4,
-};
-
-const alertPriceStyle: CSSProperties = {
-  fontSize: 38,
-  lineHeight: 1,
-  fontWeight: 950,
-};
-
-const alertBadgeStyle: CSSProperties = {
-  borderRadius: 999,
-  padding: "9px 12px",
-  background: "rgba(255,23,50,0.16)",
-  color: "#ff5d70",
-  border: "1px solid rgba(255,23,50,0.28)",
-  fontSize: 12,
-  fontWeight: 950,
-};
-
-const alertFeaturesStyle: CSSProperties = {
-  display: "grid",
-  gap: 10,
-  color: "rgba(255,255,255,0.78)",
-  fontSize: 14,
-  marginBottom: 24,
-};
-
-const alertBuyButtonStyle: CSSProperties = {
-  width: "100%",
-  border: 0,
-  borderRadius: 20,
-  padding: "17px 20px",
-  background: "linear-gradient(135deg, #ff1732, #ff4b61)",
-  color: "white",
-  fontWeight: 950,
-  cursor: "pointer",
-  boxShadow: "0 20px 45px rgba(255,23,50,0.28)",
-};
-
-const alertFinePrintStyle: CSSProperties = {
-  margin: "14px 0 0",
-  color: "rgba(255,255,255,0.42)",
-  fontSize: 12,
-  lineHeight: 1.45,
-};
