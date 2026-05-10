@@ -22,10 +22,37 @@ type OutbreakSignal = {
   summary: string;
 };
 
+type Database = {
+  public: {
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+    Tables: {
+      outbreak_signals: {
+        Row: OutbreakSignal & { id: string | number };
+        Insert: OutbreakSignal;
+        Update: Partial<OutbreakSignal>;
+        Relationships: [];
+      };
+    };
+  };
+};
+
+type SupabaseClient = ReturnType<typeof createClient<Database>>;
+
 type Article = {
   title: string;
   url: string;
   sourceName: string;
+};
+
+type GeoResult = {
+  city: string;
+  country: string;
+  region: string;
+  lat: number;
+  lng: number;
 };
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -33,48 +60,11 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const SCAN_SECRET =
   process.env.SCAN_SECRET || "hantavirus_radar_secret_123456789";
 
-const knownLocations = [
-  {
-    city: "Zurich",
-    country: "Switzerland",
-    region: "Zurich",
-    lat: 47.3769,
-    lng: 8.5417,
-    keywords: ["zurich", "zürich", "switzerland", "swiss"],
-  },
-  {
-    city: "London",
-    country: "United Kingdom",
-    region: "England",
-    lat: 51.5072,
-    lng: -0.1276,
-    keywords: ["london", "united kingdom", "uk", "britain", "england"],
-  },
-  {
-    city: "Leiden",
-    country: "Netherlands",
-    region: "South Holland",
-    lat: 52.1601,
-    lng: 4.497,
-    keywords: ["leiden", "netherlands", "dutch", "holland"],
-  },
-  {
-    city: "Dusseldorf",
-    country: "Germany",
-    region: "North Rhine-Westphalia",
-    lat: 51.2277,
-    lng: 6.7735,
-    keywords: ["dusseldorf", "düsseldorf", "germany", "german"],
-  },
-  {
-    city: "Ushuaia",
-    country: "Argentina",
-    region: "Tierra del Fuego",
-    lat: -54.8019,
-    lng: -68.303,
-    keywords: ["ushuaia", "argentina", "tierra del fuego"],
-  },
-];
+const GEOCODE_EMAIL = process.env.GEOCODE_EMAIL || "contact@hantavirusradar.com";
+
+const MAX_ARTICLES_TO_PROCESS = 45;
+const MAX_GEOCODE_REQUESTS = 10;
+const GEOCODE_DELAY_MS = 900;
 
 const blockedWords = [
   "simpsons",
@@ -103,9 +93,13 @@ const negativeWords = [
   "not infected",
   "false alarm",
   "ruled out",
+  "hoax",
 ];
 
 const healthWords = [
+  "hantavirus",
+  "andes virus",
+  "andv",
   "case",
   "cases",
   "confirmed",
@@ -119,7 +113,11 @@ const healthWords = [
   "infection",
   "infected",
   "hospital",
-  "hantavirus",
+  "hospitalized",
+  "hospitalised",
+  "death",
+  "deaths",
+  "fatal",
   "virus",
   "disease",
   "cdc",
@@ -128,15 +126,101 @@ const healthWords = [
   "ministry",
   "cruise",
   "ship",
+  "passenger",
+  "passengers",
   "travel",
 ];
+
+const badLocationWords = [
+  "hantavirus",
+  "andes",
+  "andv",
+  "virus",
+  "case",
+  "cases",
+  "outbreak",
+  "health",
+  "public",
+  "hospital",
+  "hospitalized",
+  "hospitalised",
+  "confirmed",
+  "patient",
+  "patients",
+  "death",
+  "deaths",
+  "passenger",
+  "passengers",
+  "cruise",
+  "ship",
+  "after",
+  "before",
+  "with",
+  "from",
+  "near",
+  "over",
+  "under",
+  "into",
+  "during",
+  "warning",
+  "alert",
+  "risk",
+  "disease",
+  "infection",
+];
+
+const manualCountryAliases: Record<string, string> = {
+  usa: "United States",
+  us: "United States",
+  "u.s.": "United States",
+  america: "United States",
+  "united states of america": "United States",
+
+  uk: "United Kingdom",
+  "u.k.": "United Kingdom",
+  britain: "United Kingdom",
+  "great britain": "United Kingdom",
+  england: "United Kingdom",
+  scotland: "United Kingdom",
+  wales: "United Kingdom",
+
+  rpa: "South Africa",
+  "south africa": "South Africa",
+
+  holland: "Netherlands",
+  "the netherlands": "Netherlands",
+
+  "czech republic": "Czechia",
+  russia: "Russia",
+  "russian federation": "Russia",
+
+  "south korea": "South Korea",
+  "north korea": "North Korea",
+
+  "uae": "United Arab Emirates",
+  "u.a.e.": "United Arab Emirates",
+
+  "dr congo": "Democratic Republic of the Congo",
+  "drc": "Democratic Republic of the Congo",
+  congo: "Republic of the Congo",
+
+  "ivory coast": "Côte d’Ivoire",
+};
 
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function normalizeText(value: string) {
   return value.toLowerCase().trim();
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function decodeHtml(value: string) {
@@ -188,28 +272,137 @@ function articleLooksRelevant(title: string, url: string) {
   const text = `${title} ${url}`;
   const clean = normalizeText(text);
 
-  if (!clean.includes("hantavirus")) return false;
-  if (containsAny(text, blockedWords)) return false;
-  if (containsAny(text, negativeWords)) return false;
-  if (!containsAny(text, healthWords)) return false;
+  if (!clean.includes("hantavirus") && !clean.includes("andes virus")) {
+    return false;
+  }
+
+  if (containsAny(text, blockedWords)) {
+    return false;
+  }
+
+  if (containsAny(text, negativeWords)) {
+    return false;
+  }
+
+  if (!containsAny(text, healthWords)) {
+    return false;
+  }
 
   return true;
 }
 
-function detectLocation(title: string, url: string) {
-  const text = normalizeText(`${title} ${url}`);
+function buildCountryAliases() {
+  const aliases = new Map<string, string>();
 
-  for (const location of knownLocations) {
-    const matched = location.keywords.some((keyword) =>
-      text.includes(normalizeText(keyword))
-    );
+  for (const [alias, country] of Object.entries(manualCountryAliases)) {
+    aliases.set(alias.toLowerCase(), country);
+  }
 
-    if (matched) {
-      return location;
+  try {
+    const supportedValuesOf = (Intl as any).supportedValuesOf;
+
+    if (typeof supportedValuesOf === "function") {
+      const regionCodes = supportedValuesOf("region") as string[];
+      const displayNames = new Intl.DisplayNames(["en"], { type: "region" });
+
+      for (const code of regionCodes) {
+        if (!/^[A-Z]{2}$/.test(code)) continue;
+
+        const name = displayNames.of(code);
+
+        if (name && name.length > 1) {
+          aliases.set(name.toLowerCase(), name);
+        }
+      }
+    }
+  } catch {
+    // Ignore. Manual aliases still work.
+  }
+
+  return aliases;
+}
+
+const countryAliases = buildCountryAliases();
+
+function findCountryCandidates(text: string) {
+  const candidates: string[] = [];
+  const clean = normalizeText(text);
+
+  for (const [alias, country] of countryAliases.entries()) {
+    const regex = new RegExp(`(^|[^a-z])${escapeRegExp(alias)}([^a-z]|$)`, "i");
+
+    if (regex.test(clean)) {
+      candidates.push(country);
     }
   }
 
-  return null;
+  return Array.from(new Set(candidates));
+}
+
+function cleanLocationCandidate(value: string) {
+  return value
+    .replace(/[()[\]{}]/g, " ")
+    .replace(/[.,;:!?]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function looksLikeBadLocationCandidate(value: string) {
+  const clean = normalizeText(value);
+
+  if (clean.length < 3) return true;
+  if (clean.length > 60) return true;
+
+  const parts = clean.split(/\s+/g);
+
+  if (parts.length > 5) return true;
+
+  return parts.some((part) => badLocationWords.includes(part));
+}
+
+function extractLocationCandidates(title: string, url: string) {
+  const candidates: string[] = [];
+  const text = decodeHtml(`${title} ${url}`);
+
+  const countryMatches = findCountryCandidates(text);
+  candidates.push(...countryMatches);
+
+  const locationPatterns = [
+    /\b(?:in|near|from|to|at|off|outside|around)\s+([A-ZÀ-Ž][A-Za-zÀ-ž'’.-]+(?:\s+(?:de|da|do|del|la|le|of|the|and|[A-ZÀ-Ž][A-Za-zÀ-ž'’.-]+)){0,4})/g,
+    /\b([A-ZÀ-Ž][A-Za-zÀ-ž'’.-]+,\s*[A-ZÀ-Ž][A-Za-zÀ-ž'’.-]+(?:\s+[A-ZÀ-Ž][A-Za-zÀ-ž'’.-]+){0,2})\b/g,
+  ];
+
+  for (const pattern of locationPatterns) {
+    const matches = text.matchAll(pattern);
+
+    for (const match of matches) {
+      const candidate = cleanLocationCandidate(match[1] || "");
+
+      if (!looksLikeBadLocationCandidate(candidate)) {
+        candidates.push(candidate);
+      }
+    }
+  }
+
+  const urlParts = url
+    .replace(/^https?:\/\//i, "")
+    .split(/[/?#&=_-]+/g)
+    .map(cleanLocationCandidate)
+    .filter(Boolean);
+
+  for (const part of urlParts) {
+    if (
+      part.length >= 4 &&
+      part.length <= 40 &&
+      /^[A-Za-zÀ-ž\s.'’-]+$/.test(part) &&
+      !looksLikeBadLocationCandidate(part)
+    ) {
+      const countryHits = findCountryCandidates(part);
+      candidates.push(...countryHits);
+    }
+  }
+
+  return Array.from(new Set(candidates)).slice(0, 6);
 }
 
 async function safeFetchText(url: string, timeoutMs = 20000) {
@@ -228,7 +421,7 @@ async function safeFetchText(url: string, timeoutMs = 20000) {
         Accept:
           "application/json, application/rss+xml, application/xml, text/xml, text/plain, */*",
         "User-Agent":
-          "Mozilla/5.0 HantavirusRadarBot/1.0 PublicHealthMonitoring",
+          "HantavirusRadarBot/1.0 PublicHealthMonitoring contact@hantavirusradar.com",
       },
     });
 
@@ -244,7 +437,7 @@ async function safeFetchText(url: string, timeoutMs = 20000) {
 
 async function fetchGdeltArticles() {
   const query =
-    'hantavirus (case OR confirmed OR outbreak OR patient OR cruise OR ship OR hospital OR "public health") -simpsons -prediction -predictions';
+    'hantavirus OR "andes virus" (case OR confirmed OR outbreak OR patient OR cruise OR ship OR hospital OR hospitalized OR public health OR death) -simpsons -prediction -predictions -meme';
 
   const url =
     "https://api.gdeltproject.org/api/v2/doc/doc?" +
@@ -252,7 +445,7 @@ async function fetchGdeltArticles() {
       query,
       mode: "ArtList",
       format: "json",
-      maxrecords: "50",
+      maxrecords: "75",
       sort: "datedesc",
     }).toString();
 
@@ -264,7 +457,7 @@ async function fetchGdeltArticles() {
   }
 
   const articles: Article[] = data.articles.map((item: any) => ({
-    title: String(item?.title || ""),
+    title: stripTags(String(item?.title || "")),
     url: String(item?.url || ""),
     sourceName: "GDELT",
   }));
@@ -343,8 +536,11 @@ async function fetchAllInternetArticles() {
     "hantavirus confirmed case",
     "hantavirus outbreak",
     "hantavirus cruise ship",
+    "hantavirus hospitalized",
     "hantavirus public health",
-    "hantavirus patient hospital",
+    "andes virus hantavirus outbreak",
+    "andes virus confirmed case",
+    "andes virus cruise ship",
   ];
 
   for (const query of googleQueries) {
@@ -377,19 +573,170 @@ async function fetchAllInternetArticles() {
   };
 }
 
-function buildSignalsFromArticles(articles: Article[]) {
+function getAddressCity(address: any) {
+  return (
+    address?.city ||
+    address?.town ||
+    address?.village ||
+    address?.municipality ||
+    address?.county ||
+    address?.state_district ||
+    address?.state ||
+    ""
+  );
+}
+
+function getAddressRegion(address: any) {
+  return (
+    address?.state ||
+    address?.region ||
+    address?.province ||
+    address?.county ||
+    address?.state_district ||
+    ""
+  );
+}
+
+function getAddressCountry(address: any) {
+  return address?.country || "";
+}
+
+async function geocodeLocation(query: string): Promise<GeoResult | null> {
+  const cleanQuery = cleanLocationCandidate(query);
+
+  if (!cleanQuery || looksLikeBadLocationCandidate(cleanQuery)) {
+    return null;
+  }
+
+  const url =
+    "https://nominatim.openstreetmap.org/search?" +
+    new URLSearchParams({
+      q: cleanQuery,
+      format: "jsonv2",
+      addressdetails: "1",
+      limit: "5",
+      email: GEOCODE_EMAIL,
+    }).toString();
+
+  const text = await safeFetchText(url, 16000);
+  const data = JSON.parse(text);
+
+  if (!Array.isArray(data) || data.length === 0) {
+    return null;
+  }
+
+  const best =
+    data.find((item: any) => {
+      const type = String(item?.type || "").toLowerCase();
+      const category = String(item?.category || "").toLowerCase();
+      const addresstype = String(item?.addresstype || "").toLowerCase();
+
+      return (
+        category === "boundary" ||
+        category === "place" ||
+        [
+          "city",
+          "town",
+          "village",
+          "municipality",
+          "county",
+          "state",
+          "province",
+          "region",
+          "country",
+          "administrative",
+        ].includes(type) ||
+        [
+          "city",
+          "town",
+          "village",
+          "municipality",
+          "county",
+          "state",
+          "province",
+          "region",
+          "country",
+        ].includes(addresstype)
+      );
+    }) || data[0];
+
+  const lat = Number(best?.lat);
+  const lng = Number(best?.lon);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+
+  const address = best?.address || {};
+  const country = getAddressCountry(address) || cleanQuery;
+  const region = getAddressRegion(address) || "";
+  const city =
+    getAddressCity(address) ||
+    address?.country ||
+    cleanQuery.split(",")[0] ||
+    cleanQuery;
+
+  return {
+    city: String(city),
+    country: String(country),
+    region: String(region),
+    lat,
+    lng,
+  };
+}
+
+async function buildSignalsFromArticles(articles: Article[]) {
   const signals: OutbreakSignal[] = [];
+  const geocodeCache = new Map<string, GeoResult | null>();
+  let geocodeRequests = 0;
+  const geocodeErrors: string[] = [];
 
-  for (const article of articles) {
-    const title = article.title;
-    const url = article.url;
+  const relevantArticles = articles
+    .filter((article) => articleLooksRelevant(article.title, article.url))
+    .slice(0, MAX_ARTICLES_TO_PROCESS);
 
-    if (!title || !url) continue;
-    if (!articleLooksRelevant(title, url)) continue;
+  for (const article of relevantArticles) {
+    const candidates = extractLocationCandidates(article.title, article.url);
 
-    const location = detectLocation(title, url);
+    if (candidates.length === 0) {
+      continue;
+    }
 
-    if (!location) continue;
+    let location: GeoResult | null = null;
+
+    for (const candidate of candidates) {
+      const key = candidate.toLowerCase();
+
+      if (geocodeCache.has(key)) {
+        location = geocodeCache.get(key) || null;
+      } else {
+        if (geocodeRequests >= MAX_GEOCODE_REQUESTS) {
+          break;
+        }
+
+        try {
+          if (geocodeRequests > 0) {
+            await sleep(GEOCODE_DELAY_MS);
+          }
+
+          geocodeRequests++;
+          location = await geocodeLocation(candidate);
+          geocodeCache.set(key, location);
+        } catch (error) {
+          geocodeErrors.push(`${candidate}: ${getErrorMessage(error)}`);
+          geocodeCache.set(key, null);
+          location = null;
+        }
+      }
+
+      if (location) {
+        break;
+      }
+    }
+
+    if (!location) {
+      continue;
+    }
 
     signals.push({
       disease: "hantavirus",
@@ -399,51 +746,71 @@ function buildSignalsFromArticles(articles: Article[]) {
       lat: location.lat,
       lng: location.lng,
       cases: 1,
-      deaths: 0,
+      deaths: containsAny(article.title, ["death", "deaths", "dead", "fatal"])
+        ? 1
+        : 0,
       status: "confirmed",
-      source_name: `${article.sourceName} internet scan / verified news monitoring`,
-      source_url: url,
+      source_name: `${article.sourceName} internet scan`,
+      source_url: article.url,
       last_update: today(),
-      summary: title,
+      summary: article.title,
     });
   }
 
   const unique = new Map<string, OutbreakSignal>();
 
   for (const signal of signals) {
-    const key = `${signal.city}-${signal.country}`;
+    const key = `${signal.disease}-${signal.city}-${signal.country}`;
 
     if (!unique.has(key)) {
       unique.set(key, signal);
+    } else {
+      const existing = unique.get(key)!;
+
+      unique.set(key, {
+        ...existing,
+        cases: Math.max(existing.cases, signal.cases),
+        deaths: Math.max(existing.deaths, signal.deaths),
+        last_update: signal.last_update,
+        summary: signal.summary,
+        source_name: signal.source_name,
+        source_url: signal.source_url,
+      });
     }
   }
 
-  return Array.from(unique.values());
+  return {
+    signals: Array.from(unique.values()),
+    geocodeRequests,
+    geocodeErrors,
+  };
 }
 
-async function insertOrUpdateSignals(signals: OutbreakSignal[]) {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-  let insertedOrUpdatedSignals = 0;
-  let failedInserts = 0;
-  const insertErrors: string[] = [];
+async function insertOrUpdateSignals(
+  supabase: SupabaseClient,
+  signals: OutbreakSignal[]
+) {
+  let insertedSignals = 0;
+  let updatedSignals = 0;
+  let failedSignals = 0;
+  const databaseErrors: string[] = [];
 
   for (const signal of signals) {
-    const { data: existingRows, error: findError } = await supabase
+    const { data: existingRows, error: selectError } = await supabase
       .from("outbreak_signals")
       .select("id")
-      .eq("disease", "hantavirus")
+      .eq("disease", signal.disease)
       .eq("city", signal.city)
       .eq("country", signal.country)
       .limit(1);
 
-    if (findError) {
-      failedInserts++;
-      insertErrors.push(findError.message);
+    if (selectError) {
+      failedSignals++;
+      databaseErrors.push(`Select ${signal.city}, ${signal.country}: ${selectError.message}`);
       continue;
     }
 
-    const existingId = existingRows?.[0]?.id;
+    const existingId = Array.isArray(existingRows) && existingRows[0]?.id;
 
     if (existingId) {
       const { error: updateError } = await supabase
@@ -463,46 +830,46 @@ async function insertOrUpdateSignals(signals: OutbreakSignal[]) {
         .eq("id", existingId);
 
       if (updateError) {
-        failedInserts++;
-        insertErrors.push(updateError.message);
+        failedSignals++;
+        databaseErrors.push(`Update ${signal.city}, ${signal.country}: ${updateError.message}`);
         continue;
       }
 
-      insertedOrUpdatedSignals++;
-      continue;
+      updatedSignals++;
+    } else {
+      const { error: insertError } = await supabase
+        .from("outbreak_signals")
+        .insert({
+          disease: signal.disease,
+          city: signal.city,
+          country: signal.country,
+          region: signal.region,
+          lat: signal.lat,
+          lng: signal.lng,
+          cases: signal.cases,
+          deaths: signal.deaths,
+          status: signal.status,
+          source_name: signal.source_name,
+          source_url: signal.source_url,
+          last_update: signal.last_update,
+          summary: signal.summary,
+        });
+
+      if (insertError) {
+        failedSignals++;
+        databaseErrors.push(`Insert ${signal.city}, ${signal.country}: ${insertError.message}`);
+        continue;
+      }
+
+      insertedSignals++;
     }
-
-    const { error: insertError } = await supabase
-      .from("outbreak_signals")
-      .insert({
-        disease: signal.disease,
-        city: signal.city,
-        country: signal.country,
-        region: signal.region,
-        lat: signal.lat,
-        lng: signal.lng,
-        cases: signal.cases,
-        deaths: signal.deaths,
-        status: signal.status,
-        source_name: signal.source_name,
-        source_url: signal.source_url,
-        last_update: signal.last_update,
-        summary: signal.summary,
-      });
-
-    if (insertError) {
-      failedInserts++;
-      insertErrors.push(insertError.message);
-      continue;
-    }
-
-    insertedOrUpdatedSignals++;
   }
 
   return {
-    insertedOrUpdatedSignals,
-    failedInserts,
-    insertErrors,
+    insertedSignals,
+    updatedSignals,
+    failedSignals,
+    databaseErrors,
   };
 }
 
@@ -531,38 +898,36 @@ export async function GET(request: Request) {
     );
   }
 
-  try {
-    const { articles, sourceErrors, usedSources, usedUrls } =
-      await fetchAllInternetArticles();
+  const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const signals = buildSignalsFromArticles(articles);
-    const insertResult = await insertOrUpdateSignals(signals);
+  const { articles, sourceErrors, usedSources, usedUrls } =
+    await fetchAllInternetArticles();
 
-    return NextResponse.json({
-      ok: true,
-      mode: "internet-scan",
-      message: "Scanner finished.",
-      usedSources,
-      usedUrls,
-      scannedArticles: articles.length,
-      foundSignals: signals.length,
-      insertedOrUpdatedSignals: insertResult.insertedOrUpdatedSignals,
-      failedInserts: insertResult.failedInserts,
-      sourceErrors,
-      insertErrors: insertResult.insertErrors,
-      results: signals,
-      generatedAt: new Date().toISOString(),
-    });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        ok: false,
-        mode: "internet-scan",
-        error: "Scanner failed.",
-        cause: getErrorMessage(error),
-        generatedAt: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
-  }
+  const { signals, geocodeRequests, geocodeErrors } =
+    await buildSignalsFromArticles(articles);
+
+  const databaseResult = await insertOrUpdateSignals(supabase, signals);
+
+  return NextResponse.json({
+    ok: true,
+    mode: "global-internet-scan",
+    message:
+      "Scanner finished. It searched internet sources, detected global location candidates, geocoded them and saved matching hantavirus signals to Supabase.",
+    usedSources,
+    usedUrls,
+    scannedArticles: articles.length,
+    relevantArticles: articles.filter((article) =>
+      articleLooksRelevant(article.title, article.url)
+    ).length,
+    geocodeRequests,
+    foundSignals: signals.length,
+    insertedSignals: databaseResult.insertedSignals,
+    updatedSignals: databaseResult.updatedSignals,
+    failedSignals: databaseResult.failedSignals,
+    sourceErrors,
+    geocodeErrors,
+    databaseErrors: databaseResult.databaseErrors,
+    results: signals,
+    generatedAt: new Date().toISOString(),
+  });
 }

@@ -101,7 +101,13 @@ const menuItems = [
 
 export default function HantavirusGlobe() {
   const globeRef = useRef<any>(null);
+
   const [countries, setCountries] = useState<CountryFeature[]>([]);
+  const [size, setSize] = useState({
+    width: 1200,
+    height: 900,
+  });
+
   const [selectedPanel, setSelectedPanel] = useState<SelectedPanel>({
     type: "city",
     name: "Ushuaia",
@@ -115,6 +121,20 @@ export default function HantavirusGlobe() {
     note:
       "Verified public-health statement: a multi-country hantavirus cluster is being monitored in relation to cruise ship travel. Departure point included Ushuaia, Argentina. This does not mean the whole country is widely infected.",
   });
+
+  useEffect(() => {
+    function updateSize() {
+      setSize({
+        width: Math.max(window.innerWidth - 132, 320),
+        height: window.innerHeight,
+      });
+    }
+
+    updateSize();
+    window.addEventListener("resize", updateSize);
+
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
 
   useEffect(() => {
     fetch(
@@ -132,11 +152,13 @@ export default function HantavirusGlobe() {
   useEffect(() => {
     if (!globeRef.current) return;
 
-    globeRef.current.controls().autoRotate = false;
-    globeRef.current.controls().enableDamping = true;
-    globeRef.current.controls().dampingFactor = 0.08;
-    globeRef.current.controls().rotateSpeed = 0.55;
-    globeRef.current.controls().zoomSpeed = 0.75;
+    const controls = globeRef.current.controls();
+
+    controls.autoRotate = false;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.rotateSpeed = 0.55;
+    controls.zoomSpeed = 0.75;
 
     globeRef.current.pointOfView(
       {
@@ -148,11 +170,10 @@ export default function HantavirusGlobe() {
     );
   }, []);
 
-  const infectedCountryCount = Object.keys(infectedCountries).length;
-
   const polygonsData = useMemo(() => countries, [countries]);
-
   const cityPoints = useMemo(() => outbreakCities, []);
+
+  const infectedCountryCount = Object.keys(infectedCountries).length;
 
   function getCountryName(country: CountryFeature) {
     return (
@@ -195,7 +216,7 @@ export default function HantavirusGlobe() {
         status: "no verified data",
         source: "No verified source currently attached to this country.",
         note:
-          "This country is shown as clickable for testing and navigation. No verified hantavirus signal is currently stored in this demo dataset for this country.",
+          "This country is clickable for navigation only. No verified hantavirus signal is currently stored in this dataset for this country.",
       });
     }
   }
@@ -212,6 +233,36 @@ export default function HantavirusGlobe() {
       source: city.source,
       note: city.note,
     });
+  }
+
+  function createCityMarker(city: CityPoint) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "city-marker-wrap";
+
+    const marker = document.createElement("div");
+    marker.className = `city-marker ${city.status}`;
+
+    const pulse = document.createElement("div");
+    pulse.className = "city-marker-pulse";
+
+    const pin = document.createElement("div");
+    pin.className = "city-marker-pin";
+
+    const label = document.createElement("div");
+    label.className = "city-marker-label";
+    label.innerText = city.name;
+
+    marker.appendChild(pulse);
+    marker.appendChild(pin);
+    marker.appendChild(label);
+    wrapper.appendChild(marker);
+
+    wrapper.onclick = (event) => {
+      event.stopPropagation();
+      handleCityClick(city);
+    };
+
+    return wrapper;
   }
 
   return (
@@ -256,6 +307,7 @@ export default function HantavirusGlobe() {
           >
             ☣ HANTAVIRUS
           </div>
+
           <div
             style={{
               color: "#ff263d",
@@ -307,6 +359,7 @@ export default function HantavirusGlobe() {
               >
                 {item.icon}
               </span>
+
               <span
                 style={{
                   fontSize: 11,
@@ -345,58 +398,51 @@ export default function HantavirusGlobe() {
 
         <Globe
           ref={globeRef}
-          width={typeof window !== "undefined" ? window.innerWidth - 132 : 1200}
-          height={typeof window !== "undefined" ? window.innerHeight : 900}
+          width={size.width}
+          height={size.height}
           globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
           bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
           backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
           polygonsData={polygonsData}
           polygonAltitude={(country: object) => {
             const c = country as CountryFeature;
-            return getCountryStats(c) ? 0.012 : 0.004;
+            return getCountryStats(c) ? 0.003 : 0.001;
           }}
           polygonCapColor={(country: object) => {
             const c = country as CountryFeature;
             return getCountryStats(c)
-              ? "rgba(255, 39, 57, 0.42)"
-              : "rgba(255, 255, 255, 0.015)";
+              ? "rgba(255, 39, 57, 0.38)"
+              : "rgba(255, 255, 255, 0.01)";
           }}
           polygonSideColor={(country: object) => {
             const c = country as CountryFeature;
             return getCountryStats(c)
-              ? "rgba(255, 39, 57, 0.22)"
-              : "rgba(255, 255, 255, 0.015)";
+              ? "rgba(255, 39, 57, 0.08)"
+              : "rgba(255, 255, 255, 0.003)";
           }}
           polygonStrokeColor={(country: object) => {
             const c = country as CountryFeature;
             return getCountryStats(c)
               ? "rgba(255, 39, 57, 0.95)"
-              : "rgba(255,255,255,0.26)";
+              : "rgba(255,255,255,0.24)";
           }}
           polygonLabel={() => ""}
           onPolygonClick={(country: object) =>
             handleCountryClick(country as CountryFeature)
           }
-          pointsData={cityPoints}
-          pointLat={(city: object) => (city as CityPoint).lat}
-          pointLng={(city: object) => (city as CityPoint).lng}
-          pointAltitude={0.035}
-          pointRadius={(city: object) => {
-            const c = city as CityPoint;
-            return c.cases >= 10 ? 0.22 : 0.14;
-          }}
-          pointColor={() => "#ff263d"}
-          pointLabel={() => ""}
-          onPointClick={(city: object) => handleCityClick(city as CityPoint)}
-          labelsData={[]}
+
+          /* WAŻNE:
+             Nie używamy pointsData, bo ono tworzy brzydkie słupki/cylindry.
+             Zamiast tego używamy htmlElementsData. */
+          pointsData={[]}
+          ringsData={[]}
           arcsData={[]}
-          ringsData={cityPoints}
-          ringLat={(city: object) => (city as CityPoint).lat}
-          ringLng={(city: object) => (city as CityPoint).lng}
-          ringColor={() => "rgba(255,38,61,0.55)"}
-          ringMaxRadius={2.2}
-          ringPropagationSpeed={0.7}
-          ringRepeatPeriod={1800}
+          labelsData={[]}
+          htmlElementsData={cityPoints}
+          htmlLat={(city: object) => (city as CityPoint).lat}
+          htmlLng={(city: object) => (city as CityPoint).lng}
+          htmlAltitude={0.018}
+          htmlElement={(city: object) => createCityMarker(city as CityPoint)}
         />
 
         <header
@@ -425,6 +471,7 @@ export default function HantavirusGlobe() {
               Radar
             </span>
           </h1>
+
           <p
             style={{
               marginTop: 14,
@@ -434,9 +481,9 @@ export default function HantavirusGlobe() {
               lineHeight: 1.5,
             }}
           >
-            Click any country to check stored statistics. Red countries have
-            verified signals. Red city dots show verified city-level monitoring
-            points.
+            Click any country to check stored statistics. Highlighted countries
+            have verified stored signals. City pins show verified city-level
+            monitoring points.
           </p>
         </header>
 
@@ -474,14 +521,16 @@ export default function HantavirusGlobe() {
                 display: "inline-block",
               }}
             />
+
             LIVE
+
             <span
               style={{
                 color: "rgba(255,255,255,0.55)",
                 fontWeight: 600,
               }}
             >
-              Real-time tracking
+              Supabase tracking
             </span>
           </div>
 
@@ -524,7 +573,7 @@ export default function HantavirusGlobe() {
             right: 24,
             top: 110,
             zIndex: 5,
-            width: 220,
+            width: 230,
             padding: 20,
             borderRadius: 20,
             background: "rgba(0,0,0,0.72)",
@@ -543,8 +592,8 @@ export default function HantavirusGlobe() {
           </h3>
 
           {[
-            ["#ff263d", "Confirmed city dot"],
-            ["#ff9fa8", "Country with cases"],
+            ["#ff263d", "City monitoring pin"],
+            ["#ff9fa8", "Country with stored signal"],
             ["rgba(255,255,255,0.36)", "No verified data"],
           ].map(([color, label]) => (
             <div
@@ -568,6 +617,7 @@ export default function HantavirusGlobe() {
                   display: "inline-block",
                 }}
               />
+
               {label}
             </div>
           ))}
@@ -582,6 +632,7 @@ export default function HantavirusGlobe() {
             width: 330,
             maxHeight: "45vh",
             overflowY: "auto",
+            overflowX: "hidden",
             padding: 22,
             borderRadius: 22,
             background: "rgba(0,0,0,0.76)",
@@ -610,6 +661,7 @@ export default function HantavirusGlobe() {
               fontSize: 24,
               lineHeight: 1.15,
               fontWeight: 950,
+              overflowWrap: "anywhere",
             }}
           >
             {selectedPanel.type === "country"
@@ -623,6 +675,7 @@ export default function HantavirusGlobe() {
                 marginTop: 8,
                 color: "rgba(255,255,255,0.58)",
                 fontSize: 13,
+                overflowWrap: "anywhere",
               }}
             >
               {selectedPanel.region}
@@ -653,6 +706,7 @@ export default function HantavirusGlobe() {
               >
                 Cases
               </div>
+
               <div
                 style={{
                   fontSize: 24,
@@ -679,6 +733,7 @@ export default function HantavirusGlobe() {
               >
                 Deaths
               </div>
+
               <div
                 style={{
                   fontSize: 24,
@@ -699,6 +754,7 @@ export default function HantavirusGlobe() {
               fontSize: 13,
               lineHeight: 1.55,
               color: "rgba(255,255,255,0.78)",
+              overflowWrap: "anywhere",
             }}
           >
             <strong>Status:</strong> {selectedPanel.status}
@@ -712,6 +768,7 @@ export default function HantavirusGlobe() {
               color: "rgba(255,255,255,0.74)",
               fontSize: 13,
               lineHeight: 1.55,
+              overflowWrap: "anywhere",
             }}
           >
             {selectedPanel.note}
@@ -746,6 +803,7 @@ export default function HantavirusGlobe() {
               sublabel="verified only"
               color="#ff263d"
             />
+
             <StatCard
               icon="🌎"
               value={infectedCountryCount}
@@ -753,13 +811,15 @@ export default function HantavirusGlobe() {
               sublabel="with verified signals"
               color="#ffd600"
             />
+
             <StatCard
               icon="🏙️"
               value={outbreakCities.length}
-              label="CITY DOTS"
+              label="CITY PINS"
               sublabel="clickable verified signals"
               color="#33d6ff"
             />
+
             <StatCard
               icon="🗓️"
               value="Live"
@@ -781,7 +841,7 @@ export default function HantavirusGlobe() {
           >
             <strong style={{ color: "#ff263d" }}>• LIVE FEED</strong>{" "}
             Verified source monitoring active. Click any country to view
-            country statistics. Click red city dots to view city-level details.
+            country statistics. Click city pins to view city-level details.
           </div>
         </section>
       </section>
