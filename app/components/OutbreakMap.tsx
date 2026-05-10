@@ -18,6 +18,8 @@ type CityPoint = {
   lng: number;
   cases: number;
   deaths: number;
+  suspected: number;
+  monitoring: number;
   status: SignalStatus;
   source: string;
   lastUpdate: string;
@@ -28,6 +30,8 @@ type CountryInfo = {
   country: string;
   cases: number;
   deaths: number;
+  suspected: number;
+  monitoring: number;
   cities: string[];
   status: SignalStatus;
   source: string;
@@ -46,6 +50,8 @@ const fallbackCities: CityPoint[] = [
     lng: 8.5417,
     cases: 1,
     deaths: 0,
+    suspected: 0,
+    monitoring: 0,
     status: "confirmed",
     source: outbreakSource,
     lastUpdate: "2026-05-10",
@@ -112,9 +118,7 @@ function cleanCityName(city: string, country: string, region: string) {
   const rawCity = String(city || "").trim();
   const normalizedCountry = normalizeCountryName(country);
 
-  if (!rawCity) {
-    return "Unknown city";
-  }
+  if (!rawCity) return "Unknown city";
 
   const badCityNames = [
     normalizedCountry.toLowerCase(),
@@ -123,10 +127,7 @@ function cleanCityName(city: string, country: string, region: string) {
   ];
 
   if (badCityNames.includes(rawCity.toLowerCase())) {
-    if (region && region !== "Unknown region") {
-      return region;
-    }
-
+    if (region && region !== "Unknown region") return region;
     return normalizedCountry;
   }
 
@@ -140,7 +141,6 @@ function cleanCityName(city: string, country: string, region: string) {
 function getFeatureName(feature: any) {
   const rawName =
     feature?.properties?.ADMIN ||
-    feature?.properties?.NAME_LONG ||
     feature?.properties?.NAME ||
     feature?.properties?.name ||
     feature?.properties?.country ||
@@ -157,9 +157,7 @@ function toNumber(value: unknown, fallback: number) {
 function cleanStatus(value: unknown, deaths = 0): SignalStatus {
   const status = String(value || "").trim().toLowerCase();
 
-  if (deaths > 0 && status !== "confirmed") {
-    return "death";
-  }
+  if (deaths > 0) return "death";
 
   if (
     status === "confirmed" ||
@@ -178,6 +176,8 @@ function hasSignal(city: CityPoint) {
   return (
     city.cases > 0 ||
     city.deaths > 0 ||
+    city.suspected > 0 ||
+    city.monitoring > 0 ||
     city.status === "confirmed" ||
     city.status === "suspected" ||
     city.status === "monitoring" ||
@@ -204,6 +204,8 @@ function buildCountries(cities: CityPoint[]): CountryInfo[] {
         country: key,
         cases: 0,
         deaths: 0,
+        suspected: 0,
+        monitoring: 0,
         cities: [],
         status: city.status,
         source: city.source,
@@ -215,6 +217,8 @@ function buildCountries(cities: CityPoint[]): CountryInfo[] {
 
     item.cases += city.cases;
     item.deaths += city.deaths;
+    item.suspected += city.suspected;
+    item.monitoring += city.monitoring;
 
     if (!item.cities.includes(city.city)) {
       item.cities.push(city.city);
@@ -230,6 +234,20 @@ function buildCountries(cities: CityPoint[]): CountryInfo[] {
 
 function mapApiCity(item: any, index: number): CityPoint {
   const deaths = toNumber(item.deaths, 0);
+  const cases = toNumber(item.cases, 0);
+
+  const suspected =
+    toNumber(item.suspected, NaN) ||
+    toNumber(item.suspected_cases, NaN) ||
+    toNumber(item.suspectedCases, NaN) ||
+    0;
+
+  const monitoring =
+    toNumber(item.monitoring, NaN) ||
+    toNumber(item.monitoring_count, NaN) ||
+    toNumber(item.monitoringCount, NaN) ||
+    0;
+
   const country = normalizeCountryName(String(item.country || "Unknown country"));
   const region = String(item.region || item.admin1 || "Unknown region");
 
@@ -239,6 +257,8 @@ function mapApiCity(item: any, index: number): CityPoint {
     region
   );
 
+  const status = cleanStatus(item.status || item.signal_type, deaths);
+
   return {
     id: toNumber(item.id, index + 1),
     city,
@@ -246,16 +266,16 @@ function mapApiCity(item: any, index: number): CityPoint {
     region,
     lat: toNumber(item.lat, 0),
     lng: toNumber(item.lng, 0),
-    cases: toNumber(item.cases, 0),
+    cases,
     deaths,
-    status: cleanStatus(item.status || item.signal_type, deaths),
+    suspected,
+    monitoring,
+    status,
     source: String(item.source || item.source_name || outbreakSource),
     lastUpdate: String(
       item.lastUpdate || item.last_update || item.last_update_date || "Unknown"
     ),
-    summary: String(
-      item.summary || item.raw_summary || "Stored hantavirus signal."
-    ),
+    summary: String(item.summary || item.raw_summary || "Stored hantavirus signal."),
   };
 }
 
@@ -276,10 +296,10 @@ export default function OutbreakMap() {
   const [selectedCountry, setSelectedCountry] = useState<CountryInfo | null>(
     buildCountries(fallbackCities)[0]
   );
+
   const [activeTab, setActiveTab] = useState("map");
   const [lastRefresh, setLastRefresh] = useState("");
   const [alertsOpen, setAlertsOpen] = useState(false);
-  const [showCityMarkers, setShowCityMarkers] = useState(false);
 
   const infectedCountries = useMemo(() => {
     return buildCountries(trackedCities);
@@ -296,6 +316,11 @@ export default function OutbreakMap() {
       trackedCities: activeCities.length,
       totalCases: activeCities.reduce((sum, city) => sum + city.cases, 0),
       totalDeaths: activeCities.reduce((sum, city) => sum + city.deaths, 0),
+      totalSuspected: activeCities.reduce((sum, city) => sum + city.suspected, 0),
+      totalMonitoring: activeCities.reduce(
+        (sum, city) => sum + city.monitoring,
+        0
+      ),
     };
   }, [activeCities, infectedCountries]);
 
@@ -310,64 +335,34 @@ export default function OutbreakMap() {
   function getCountryColor(countryName: string) {
     const country = findCountryInfo(countryName);
 
-    if (!country) {
-      return "rgba(255,255,255,0.012)";
-    }
+    if (!country) return "rgba(255,255,255,0.008)";
 
-    if (country.status === "suspected") {
-      return "rgba(255, 154, 165, 0.45)";
-    }
+    if (country.status === "suspected") return "rgba(255, 154, 165, 0.22)";
+    if (country.status === "monitoring") return "rgba(255, 170, 40, 0.18)";
 
-    if (country.status === "monitoring") {
-      return "rgba(255, 170, 40, 0.38)";
-    }
-
-    if (country.status === "death") {
-      return "rgba(164, 0, 24, 0.58)";
-    }
-
-    return "rgba(255, 20, 45, 0.58)";
+    return "rgba(255, 20, 45, 0.25)";
   }
 
   function getCountryStroke(countryName: string) {
     const country = findCountryInfo(countryName);
 
-    if (!country) {
-      return "rgba(255,255,255,0.2)";
-    }
+    if (!country) return "rgba(255,255,255,0.20)";
+    if (country.status === "suspected") return "rgba(255, 154, 165, 0.85)";
+    if (country.status === "monitoring") return "rgba(255, 170, 40, 0.85)";
 
-    if (country.status === "suspected") {
-      return "rgba(255, 154, 165, 0.9)";
-    }
+    return "rgba(255, 23, 50, 0.95)";
+  }
 
-    if (country.status === "monitoring") {
-      return "rgba(255, 170, 40, 0.9)";
-    }
-
-    if (country.status === "death") {
-      return "rgba(164, 0, 24, 0.95)";
-    }
-
-    return "rgba(255, 23, 50, 0.9)";
+  function getCountryAltitude(countryName: string) {
+    const country = findCountryInfo(countryName);
+    return country ? 0.0022 : 0.0008;
   }
 
   function getCityMarkerClass(city: CityPoint) {
-    if (city.deaths > 0 || city.status === "death") {
-      return "death";
-    }
-
-    if (city.status === "suspected") {
-      return "suspected";
-    }
-
-    if (city.status === "monitoring") {
-      return "monitoring";
-    }
-
-    if (city.status === "confirmed") {
-      return "confirmed";
-    }
-
+    if (city.deaths > 0 || city.status === "death") return "death";
+    if (city.status === "suspected") return "suspected";
+    if (city.status === "monitoring") return "monitoring";
+    if (city.status === "confirmed") return "confirmed";
     return "none";
   }
 
@@ -385,6 +380,8 @@ export default function OutbreakMap() {
       country: name,
       cases: 0,
       deaths: 0,
+      suspected: 0,
+      monitoring: 0,
       cities: [],
       status: "none",
       source: "No verified active signal currently entered for this country.",
@@ -408,7 +405,7 @@ export default function OutbreakMap() {
     element.innerHTML = `
       <div class="city-marker ${getCityMarkerClass(city)}">
         <div class="city-marker-pulse"></div>
-        <div class="city-marker-pin"></div>
+        <div class="city-marker-dot"></div>
         <div class="city-marker-label">${city.city}</div>
       </div>
     `;
@@ -491,29 +488,11 @@ export default function OutbreakMap() {
   useEffect(() => {
     function updateGlobeSize() {
       const box = globeWrapRef.current;
-
-      if (!box) {
-        return;
-      }
-
-      const isMobile = window.innerWidth <= 768;
-      const boxWidth = box.clientWidth;
-      const boxHeight = box.clientHeight;
-
-      if (isMobile) {
-        const size = Math.floor(Math.min(boxWidth, boxHeight));
-
-        setGlobeSize({
-          width: size,
-          height: size,
-        });
-
-        return;
-      }
+      if (!box) return;
 
       setGlobeSize({
-        width: Math.floor(boxWidth),
-        height: Math.floor(boxHeight),
+        width: Math.floor(box.clientWidth),
+        height: Math.floor(box.clientHeight),
       });
     }
 
@@ -522,9 +501,7 @@ export default function OutbreakMap() {
     const timeoutOne = window.setTimeout(updateGlobeSize, 100);
     const timeoutTwo = window.setTimeout(updateGlobeSize, 500);
 
-    const observer = new ResizeObserver(() => {
-      updateGlobeSize();
-    });
+    const observer = new ResizeObserver(updateGlobeSize);
 
     if (globeWrapRef.current) {
       observer.observe(globeWrapRef.current);
@@ -578,40 +555,6 @@ export default function OutbreakMap() {
     }
   }, [globeSize.width, globeSize.height, countries.length]);
 
-  useEffect(() => {
-    if (!globeRef.current) {
-      return;
-    }
-
-    const controls = globeRef.current.controls();
-
-    function updateMarkerVisibility() {
-      if (!globeRef.current) {
-        return;
-      }
-
-      const pov = globeRef.current.pointOfView();
-
-      if (!pov) {
-        return;
-      }
-
-      setShowCityMarkers(pov.altitude <= 1.85);
-    }
-
-    updateMarkerVisibility();
-
-    if (controls) {
-      controls.addEventListener("change", updateMarkerVisibility);
-    }
-
-    return () => {
-      if (controls) {
-        controls.removeEventListener("change", updateMarkerVisibility);
-      }
-    };
-  }, []);
-
   return (
     <main className="radar-app">
       <aside className="radar-sidebar">
@@ -654,27 +597,28 @@ export default function OutbreakMap() {
               bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
               backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
               polygonsData={countries}
-              polygonAltitude={0}
               polygonCapColor={(feature: any) =>
                 getCountryColor(getFeatureName(feature))
               }
-              polygonSideColor={() => "rgba(255, 23, 50, 0)"}
+              polygonSideColor={() => "rgba(255, 23, 50, 0.025)"}
               polygonStrokeColor={(feature: any) =>
                 getCountryStroke(getFeatureName(feature))
               }
-              polygonsTransitionDuration={0}
+              polygonAltitude={(feature: any) =>
+                getCountryAltitude(getFeatureName(feature))
+              }
               polygonLabel={() => ""}
               onPolygonClick={handleCountryClick}
               pointsData={[]}
               ringsData={[]}
               arcsData={[]}
               labelsData={[]}
-              htmlElementsData={showCityMarkers ? activeCities : []}
+              htmlElementsData={activeCities}
               htmlLat="lat"
               htmlLng="lng"
-              htmlAltitude={0.018}
+              htmlAltitude={0.001}
               htmlElement={(city: any) => createCityMarker(city)}
-              htmlTransitionDuration={180}
+              htmlTransitionDuration={0}
             />
           </div>
         </div>
@@ -686,7 +630,8 @@ export default function OutbreakMap() {
 
           <p>
             Verified country overlays and clickable outbreak markers. Click any
-            country to view country statistics. Zoom in to see city markers.
+            country to view country statistics. Click any red marker to view city
+            details.
           </p>
         </div>
 
@@ -742,7 +687,7 @@ export default function OutbreakMap() {
 
               <p className="details-subtitle">{selectedCity.region}</p>
 
-              <div className="details-grid">
+              <div className="details-grid details-grid-four">
                 <div>
                   <small>Cases</small>
                   <strong>{selectedCity.cases}</strong>
@@ -751,6 +696,16 @@ export default function OutbreakMap() {
                 <div>
                   <small>Deaths</small>
                   <strong>{selectedCity.deaths}</strong>
+                </div>
+
+                <div>
+                  <small>Suspected</small>
+                  <strong>{selectedCity.suspected}</strong>
+                </div>
+
+                <div>
+                  <small>Monitoring</small>
+                  <strong>{selectedCity.monitoring}</strong>
                 </div>
               </div>
 
@@ -772,7 +727,7 @@ export default function OutbreakMap() {
                 Country-level status from the current app database.
               </p>
 
-              <div className="details-grid">
+              <div className="details-grid details-grid-four">
                 <div>
                   <small>Cases</small>
                   <strong>{selectedCountry.cases}</strong>
@@ -781,6 +736,16 @@ export default function OutbreakMap() {
                 <div>
                   <small>Deaths</small>
                   <strong>{selectedCountry.deaths}</strong>
+                </div>
+
+                <div>
+                  <small>Suspected</small>
+                  <strong>{selectedCountry.suspected}</strong>
+                </div>
+
+                <div>
+                  <small>Monitoring</small>
+                  <strong>{selectedCountry.monitoring}</strong>
                 </div>
               </div>
 
@@ -819,7 +784,7 @@ export default function OutbreakMap() {
             <span>🏙️</span>
             <strong>{stats.trackedCities}</strong>
             <p>TRACKED CITIES</p>
-            <small>zoom in for markers</small>
+            <small>visible markers</small>
           </div>
 
           <div className="radar-stat">
@@ -831,8 +796,8 @@ export default function OutbreakMap() {
 
           <div className="radar-feed">
             <b>• LIVE FEED</b>
-            Supabase source monitoring active. Zoom in to see city markers.
-            Click any marker to view city details.
+            Supabase source monitoring active. Click any marker to view city
+            details.
           </div>
         </section>
 
@@ -920,23 +885,19 @@ function renderTabContent(
           body={[
             `Stored signals: ${trackedCities.filter(hasSignal).length}`,
             `Countries with stored signals: ${infectedCountries.length}`,
-            `Total cases: ${trackedCities.reduce(
-              (sum, city) => sum + city.cases,
-              0
-            )}`,
-            `Total deaths: ${trackedCities.reduce(
-              (sum, city) => sum + city.deaths,
-              0
-            )}`,
+            `Total cases: ${trackedCities.reduce((sum, city) => sum + city.cases, 0)}`,
+            `Total deaths: ${trackedCities.reduce((sum, city) => sum + city.deaths, 0)}`,
+            `Total suspected: ${trackedCities.reduce((sum, city) => sum + city.suspected, 0)}`,
+            `Total monitoring: ${trackedCities.reduce((sum, city) => sum + city.monitoring, 0)}`,
           ]}
         />
 
         <InfoCard
           title="Data rule"
           body={[
-            "Confirmed cases, suspected cases, deaths and monitoring/exposure locations are separated by status.",
-            "Markers appear only after zooming in.",
+            "Confirmed cases, suspected cases, deaths and monitoring locations are separated by status.",
             "The app should never invent numbers without a stored database signal.",
+            "City markers are flat HTML markers, not 3D columns.",
           ]}
         />
 
@@ -944,7 +905,7 @@ function renderTabContent(
           title="Countries currently tracked"
           body={infectedCountries.map(
             (country) =>
-              `${country.country}: ${country.cases} case(s), ${country.deaths} death(s), status: ${country.status}`
+              `${country.country}: ${country.cases} case(s), ${country.deaths} death(s), ${country.suspected} suspected, ${country.monitoring} monitoring, status: ${country.status}`
           )}
         />
       </div>
@@ -961,6 +922,8 @@ function renderTabContent(
             body={[
               `Cases: ${city.cases}`,
               `Deaths: ${city.deaths}`,
+              `Suspected: ${city.suspected}`,
+              `Monitoring: ${city.monitoring}`,
               `Status: ${city.status}`,
               `Source: ${city.source}`,
               city.summary,
@@ -1085,11 +1048,10 @@ function renderTabContent(
         />
 
         <InfoCard
-          title="Why do markers appear only after zoom?"
+          title="Why are markers flat?"
           body={[
-            "To avoid covering half of the map with city icons.",
-            "Country overlays are visible from far away.",
-            "City markers appear when the user zooms in.",
+            "Flat markers are used because 3D points in react-globe.gl look like vertical columns.",
+            "This keeps the map cleaner and more professional.",
           ]}
         />
 

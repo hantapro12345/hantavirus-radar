@@ -168,196 +168,152 @@ button {
   display: block !important;
 }
 
-/* CLEAN CITY MARKERS — NO UGLY COLUMNS */
+/* CUSTOM MAP MARKERS - FLAT DOTS, NO 3D COLUMNS, NO FLOATING PINS */
 
 .city-marker-wrap {
-  width: 0;
-  height: 0;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%, -50%);
   pointer-events: auto;
   cursor: pointer;
-  transform: translate(-50%, -100%);
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.55));
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.55));
 }
 
 .city-marker {
   position: relative;
   width: 26px;
-  height: 34px;
-  transform: translate(-13px, -34px);
-  transform-origin: bottom center;
-  animation: markerPop 0.25s ease-out both;
+  height: 26px;
+  transform-origin: center center;
+  animation: markerPop 0.22s ease-out both;
 }
 
-.city-marker-pin {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 22px;
-  height: 22px;
-  transform: translateX(-50%) rotate(45deg);
-  border-radius: 50% 50% 50% 4px;
-  background: #ff1732;
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  box-shadow:
-    0 0 0 2px rgba(255, 23, 50, 0.24),
-    0 0 18px rgba(255, 23, 50, 0.76);
-}
-
-.city-marker-pin::after {
-  content: "";
+.city-marker-dot {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 7px;
-  height: 7px;
+  width: 14px;
+  height: 14px;
   transform: translate(-50%, -50%);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.95);
+  border: 3px solid rgba(255, 255, 255, 0.95);
+  background: #ff1732;
+  box-shadow:
+    0 0 0 2px rgba(255, 23, 50, 0.25),
+    0 0 18px rgba(255, 23, 50, 0.95);
 }
 
 .city-marker-pulse {
   position: absolute;
   left: 50%;
-  top: 19px;
-  width: 24px;
-  height: 10px;
-  transform: translateX(-50%);
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%, -50%);
   border-radius: 999px;
   background: rgba(255, 23, 50, 0.24);
-  animation: markerPulse 1.8s infinite ease-out;
+  animation: markerPulse 1.7s ease-out infinite;
   pointer-events: none;
 }
 
 .city-marker-label {
   position: absolute;
   left: 50%;
-  top: 32px;
+  top: -30px;
   transform: translateX(-50%);
-  max-width: 130px;
+  white-space: nowrap;
   padding: 5px 8px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   color: white;
   font-size: 10px;
   line-height: 1;
   font-weight: 900;
-  white-space: nowrap;
+  letter-spacing: 0.3px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.16s ease, transform 0.16s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease;
   backdrop-filter: blur(10px);
 }
 
-.city-marker:hover .city-marker-label,
 .city-marker-wrap:hover .city-marker-label {
   opacity: 1;
-  transform: translateX(-50%) translateY(2px);
+  transform: translateX(-50%) translateY(-2px);
 }
 
-.city-marker.confirmed .city-marker-pin {
+.city-marker.confirmed .city-marker-dot {
   background: #ff1732;
   box-shadow:
-    0 0 0 2px rgba(255, 23, 50, 0.24),
-    0 0 18px rgba(255, 23, 50, 0.8);
+    0 0 0 2px rgba(255, 23, 50, 0.25),
+    0 0 18px rgba(255, 23, 50, 0.95);
 }
 
-.city-marker.confirmed .city-marker-pulse {
-  background: rgba(255, 23, 50, 0.24);
-}
-
-.city-marker.death .city-marker-pin {
+.city-marker.death .city-marker-dot {
   background: #a40018;
   box-shadow:
     0 0 0 2px rgba(164, 0, 24, 0.28),
-    0 0 22px rgba(255, 23, 50, 0.86);
+    0 0 18px rgba(255, 23, 50, 0.85);
 }
 
-.city-marker.death .city-marker-pulse {
-  background: rgba(164, 0, 24, 0.32);
-}
-
-.city-marker.suspected .city-marker-pin {
+.city-marker.suspected .city-marker-dot {
   background: #ff9aa5;
   box-shadow:
     0 0 0 2px rgba(255, 154, 165, 0.25),
-    0 0 18px rgba(255, 154, 165, 0.72);
+    0 0 18px rgba(255, 154, 165, 0.85);
 }
 
-.city-marker.suspected .city-marker-pulse {
-  background: rgba(255, 154, 165, 0.26);
-}
-
-.city-marker.monitoring .city-marker-pin {
+.city-marker.monitoring .city-marker-dot {
   background: #ffb020;
   box-shadow:
     0 0 0 2px rgba(255, 176, 32, 0.25),
-    0 0 18px rgba(255, 176, 32, 0.7);
+    0 0 18px rgba(255, 176, 32, 0.85);
 }
 
-.city-marker.monitoring .city-marker-pulse {
-  background: rgba(255, 176, 32, 0.28);
-}
-
-.city-marker.exposure .city-marker-pin {
-  background: #9b5cff;
-  box-shadow:
-    0 0 0 2px rgba(155, 92, 255, 0.25),
-    0 0 18px rgba(155, 92, 255, 0.72);
-}
-
-.city-marker.exposure .city-marker-pulse {
-  background: rgba(155, 92, 255, 0.25);
-}
-
-.city-marker.quarantine .city-marker-pin {
-  background: #38bdf8;
-  box-shadow:
-    0 0 0 2px rgba(56, 189, 248, 0.25),
-    0 0 18px rgba(56, 189, 248, 0.7);
-}
-
-.city-marker.quarantine .city-marker-pulse {
-  background: rgba(56, 189, 248, 0.25);
-}
-
-.city-marker.none .city-marker-pin {
+.city-marker.none .city-marker-dot {
   background: #555;
   box-shadow:
     0 0 0 2px rgba(255, 255, 255, 0.08),
     0 0 12px rgba(255, 255, 255, 0.18);
 }
 
-.city-marker.none .city-marker-pulse {
-  background: rgba(255, 255, 255, 0.14);
+.city-marker.suspected .city-marker-pulse {
+  background: rgba(255, 154, 165, 0.22);
+}
+
+.city-marker.monitoring .city-marker-pulse {
+  background: rgba(255, 176, 32, 0.2);
+}
+
+.city-marker.death .city-marker-pulse {
+  background: rgba(164, 0, 24, 0.25);
 }
 
 @keyframes markerPulse {
   0% {
-    transform: translateX(-50%) scale(0.78);
-    opacity: 0.7;
+    opacity: 0.65;
+    transform: translate(-50%, -50%) scale(0.65);
   }
 
   70% {
-    transform: translateX(-50%) scale(1.75);
     opacity: 0;
+    transform: translate(-50%, -50%) scale(1.7);
   }
 
   100% {
-    transform: translateX(-50%) scale(1.75);
     opacity: 0;
+    transform: translate(-50%, -50%) scale(1.7);
   }
 }
 
 @keyframes markerPop {
   from {
     opacity: 0;
-    transform: translate(-13px, -28px) scale(0.45);
+    transform: scale(0.4);
   }
 
   to {
     opacity: 1;
-    transform: translate(-13px, -34px) scale(1);
+    transform: scale(1);
   }
 }
 
@@ -528,8 +484,8 @@ button {
   top: 47%;
   transform: translateY(-30%);
   z-index: 18;
-  width: 330px;
-  max-height: 475px;
+  width: 350px;
+  max-height: 520px;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 22px;
@@ -578,6 +534,10 @@ button {
   margin-bottom: 14px;
 }
 
+.details-grid-four {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 .details-grid div {
   padding: 13px;
   border-radius: 13px;
@@ -593,6 +553,19 @@ button {
 
 .details-grid strong {
   font-size: 24px;
+}
+
+.details-grid-four div {
+  padding: 11px 9px;
+}
+
+.details-grid-four small {
+  font-size: 9px;
+  line-height: 1.1;
+}
+
+.details-grid-four strong {
+  font-size: 20px;
 }
 
 .details-box {
@@ -918,17 +891,6 @@ button {
   .radar-details {
     display: none;
   }
-
-  .city-marker {
-    width: 22px;
-    height: 30px;
-    transform: translate(-11px, -30px);
-  }
-
-  .city-marker-pin {
-    width: 19px;
-    height: 19px;
-  }
 }
 
 /* MOBILE */
@@ -1133,26 +1095,25 @@ button {
     display: block !important;
   }
 
+  .city-marker-wrap {
+    width: 22px;
+    height: 22px;
+  }
+
   .city-marker {
     width: 22px;
-    height: 30px;
-    transform: translate(-11px, -30px);
+    height: 22px;
   }
 
-  .city-marker-pin {
-    width: 19px;
-    height: 19px;
-    border-width: 1.5px;
-  }
-
-  .city-marker-pin::after {
-    width: 6px;
-    height: 6px;
+  .city-marker-dot {
+    width: 12px;
+    height: 12px;
+    border-width: 2px;
   }
 
   .city-marker-pulse {
     width: 22px;
-    height: 9px;
+    height: 22px;
   }
 
   .city-marker-label {
@@ -1193,6 +1154,10 @@ button {
     gap: 12px;
   }
 
+  .details-grid-four {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .details-grid div {
     padding: 18px;
     border-radius: 18px;
@@ -1203,6 +1168,14 @@ button {
   }
 
   .details-grid strong {
+    font-size: 34px;
+  }
+
+  .details-grid-four small {
+    font-size: 14px;
+  }
+
+  .details-grid-four strong {
     font-size: 34px;
   }
 
