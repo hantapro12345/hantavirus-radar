@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import type { GlobeMethods } from "react-globe.gl";
 
 const Globe = dynamic(() => import("react-globe.gl"), {
   ssr: false,
@@ -17,9 +18,9 @@ type CityPoint = {
   lat: number;
   lng: number;
   cases: number;
-  deaths: number;
   suspected: number;
   monitoring: number;
+  deaths: number;
   status: SignalStatus;
   source: string;
   lastUpdate: string;
@@ -29,9 +30,9 @@ type CityPoint = {
 type CountryInfo = {
   country: string;
   cases: number;
-  deaths: number;
   suspected: number;
   monitoring: number;
+  deaths: number;
   cities: string[];
   status: SignalStatus;
   source: string;
@@ -49,9 +50,9 @@ const fallbackCities: CityPoint[] = [
     lat: 47.3769,
     lng: 8.5417,
     cases: 1,
-    deaths: 0,
     suspected: 0,
     monitoring: 0,
+    deaths: 0,
     status: "confirmed",
     source: outbreakSource,
     lastUpdate: "2026-05-10",
@@ -118,7 +119,9 @@ function cleanCityName(city: string, country: string, region: string) {
   const rawCity = String(city || "").trim();
   const normalizedCountry = normalizeCountryName(country);
 
-  if (!rawCity) return "Unknown city";
+  if (!rawCity) {
+    return "Unknown city";
+  }
 
   const badCityNames = [
     normalizedCountry.toLowerCase(),
@@ -127,7 +130,10 @@ function cleanCityName(city: string, country: string, region: string) {
   ];
 
   if (badCityNames.includes(rawCity.toLowerCase())) {
-    if (region && region !== "Unknown region") return region;
+    if (region && region !== "Unknown region") {
+      return region;
+    }
+
     return normalizedCountry;
   }
 
@@ -138,15 +144,22 @@ function cleanCityName(city: string, country: string, region: string) {
   return rawCity;
 }
 
-function getFeatureName(feature: any) {
+function getFeatureName(feature: object) {
+  const props =
+    "properties" in feature &&
+    feature.properties !== null &&
+    typeof feature.properties === "object"
+      ? (feature.properties as Record<string, unknown>)
+      : {};
+
   const rawName =
-    feature?.properties?.ADMIN ||
-    feature?.properties?.NAME ||
-    feature?.properties?.name ||
-    feature?.properties?.country ||
+    props.ADMIN ??
+    props.NAME ??
+    props.name ??
+    props.country ??
     "Unknown country";
 
-  return normalizeCountryName(rawName);
+  return normalizeCountryName(String(rawName));
 }
 
 function toNumber(value: unknown, fallback: number) {
@@ -157,7 +170,9 @@ function toNumber(value: unknown, fallback: number) {
 function cleanStatus(value: unknown, deaths = 0): SignalStatus {
   const status = String(value || "").trim().toLowerCase();
 
-  if (deaths > 0) return "death";
+  if (deaths > 0 && status !== "confirmed") {
+    return "death";
+  }
 
   if (
     status === "confirmed" ||
@@ -175,9 +190,9 @@ function cleanStatus(value: unknown, deaths = 0): SignalStatus {
 function hasSignal(city: CityPoint) {
   return (
     city.cases > 0 ||
-    city.deaths > 0 ||
     city.suspected > 0 ||
     city.monitoring > 0 ||
+    city.deaths > 0 ||
     city.status === "confirmed" ||
     city.status === "suspected" ||
     city.status === "monitoring" ||
@@ -203,9 +218,9 @@ function buildCountries(cities: CityPoint[]): CountryInfo[] {
       map.set(key, {
         country: key,
         cases: 0,
-        deaths: 0,
         suspected: 0,
         monitoring: 0,
+        deaths: 0,
         cities: [],
         status: city.status,
         source: city.source,
@@ -216,9 +231,9 @@ function buildCountries(cities: CityPoint[]): CountryInfo[] {
     const item = map.get(key)!;
 
     item.cases += city.cases;
-    item.deaths += city.deaths;
     item.suspected += city.suspected;
     item.monitoring += city.monitoring;
+    item.deaths += city.deaths;
 
     if (!item.cities.includes(city.city)) {
       item.cities.push(city.city);
@@ -232,32 +247,22 @@ function buildCountries(cities: CityPoint[]): CountryInfo[] {
   return Array.from(map.values());
 }
 
-function mapApiCity(item: any, index: number): CityPoint {
+function mapApiCity(item: Record<string, unknown>, index: number): CityPoint {
   const deaths = toNumber(item.deaths, 0);
   const cases = toNumber(item.cases, 0);
+  const suspected = toNumber(item.suspected ?? item.suspected_cases, 0);
+  const monitoring = toNumber(item.monitoring ?? item.monitoring_cases, 0);
 
-  const suspected =
-    toNumber(item.suspected, NaN) ||
-    toNumber(item.suspected_cases, NaN) ||
-    toNumber(item.suspectedCases, NaN) ||
-    0;
-
-  const monitoring =
-    toNumber(item.monitoring, NaN) ||
-    toNumber(item.monitoring_count, NaN) ||
-    toNumber(item.monitoringCount, NaN) ||
-    0;
-
-  const country = normalizeCountryName(String(item.country || "Unknown country"));
-  const region = String(item.region || item.admin1 || "Unknown region");
+  const country = normalizeCountryName(String(item.country ?? "Unknown country"));
+  const region = String(item.region ?? item.admin1 ?? "Unknown region");
 
   const city = cleanCityName(
-    String(item.city || item.location || "Unknown city"),
+    String(item.city ?? item.location ?? "Unknown city"),
     country,
     region
   );
 
-  const status = cleanStatus(item.status || item.signal_type, deaths);
+  const status = cleanStatus(item.status ?? item.signal_type, deaths);
 
   return {
     id: toNumber(item.id, index + 1),
@@ -267,36 +272,33 @@ function mapApiCity(item: any, index: number): CityPoint {
     lat: toNumber(item.lat, 0),
     lng: toNumber(item.lng, 0),
     cases,
-    deaths,
     suspected,
     monitoring,
+    deaths,
     status,
-    source: String(item.source || item.source_name || outbreakSource),
+    source: String(item.source ?? item.source_name ?? outbreakSource),
     lastUpdate: String(
-      item.lastUpdate || item.last_update || item.last_update_date || "Unknown"
+      item.lastUpdate ?? item.last_update ?? item.last_update_date ?? "Unknown"
     ),
-    summary: String(item.summary || item.raw_summary || "Stored hantavirus signal."),
+    summary: String(item.summary ?? item.raw_summary ?? "Stored hantavirus signal."),
   };
 }
 
 export default function OutbreakMap() {
-  const globeRef = useRef<any>(null);
+  const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const globeWrapRef = useRef<HTMLDivElement | null>(null);
 
-  const [countries, setCountries] = useState<any[]>([]);
+  const [countries, setCountries] = useState<object[]>([]);
   const [globeSize, setGlobeSize] = useState({
     width: 900,
     height: 900,
   });
 
   const [trackedCities, setTrackedCities] = useState<CityPoint[]>(fallbackCities);
-  const [selectedCity, setSelectedCity] = useState<CityPoint | null>(
-    fallbackCities[0]
-  );
+  const [selectedCity, setSelectedCity] = useState<CityPoint | null>(fallbackCities[0]);
   const [selectedCountry, setSelectedCountry] = useState<CountryInfo | null>(
     buildCountries(fallbackCities)[0]
   );
-
   const [activeTab, setActiveTab] = useState("map");
   const [lastRefresh, setLastRefresh] = useState("");
   const [alertsOpen, setAlertsOpen] = useState(false);
@@ -315,12 +317,9 @@ export default function OutbreakMap() {
       countries: infectedCountries.length,
       trackedCities: activeCities.length,
       totalCases: activeCities.reduce((sum, city) => sum + city.cases, 0),
-      totalDeaths: activeCities.reduce((sum, city) => sum + city.deaths, 0),
       totalSuspected: activeCities.reduce((sum, city) => sum + city.suspected, 0),
-      totalMonitoring: activeCities.reduce(
-        (sum, city) => sum + city.monitoring,
-        0
-      ),
+      totalMonitoring: activeCities.reduce((sum, city) => sum + city.monitoring, 0),
+      totalDeaths: activeCities.reduce((sum, city) => sum + city.deaths, 0),
     };
   }, [activeCities, infectedCountries]);
 
@@ -335,38 +334,90 @@ export default function OutbreakMap() {
   function getCountryColor(countryName: string) {
     const country = findCountryInfo(countryName);
 
-    if (!country) return "rgba(255,255,255,0.008)";
+    if (!country) {
+      return "rgba(255,255,255,0.012)";
+    }
 
-    if (country.status === "suspected") return "rgba(255, 154, 165, 0.22)";
-    if (country.status === "monitoring") return "rgba(255, 170, 40, 0.18)";
+    if (country.status === "death" || country.status === "confirmed") {
+      return "rgba(255, 23, 50, 0.58)";
+    }
 
-    return "rgba(255, 20, 45, 0.25)";
+    if (country.status === "suspected") {
+      return "rgba(255, 154, 190, 0.55)";
+    }
+
+    if (country.status === "monitoring") {
+      return "rgba(255, 176, 32, 0.44)";
+    }
+
+    return "rgba(255,255,255,0.012)";
   }
 
   function getCountryStroke(countryName: string) {
     const country = findCountryInfo(countryName);
 
-    if (!country) return "rgba(255,255,255,0.20)";
-    if (country.status === "suspected") return "rgba(255, 154, 165, 0.85)";
-    if (country.status === "monitoring") return "rgba(255, 170, 40, 0.85)";
+    if (!country) {
+      return "rgba(255,255,255,0.22)";
+    }
 
-    return "rgba(255, 23, 50, 0.95)";
+    if (country.status === "death" || country.status === "confirmed") {
+      return "rgba(255, 23, 50, 0.95)";
+    }
+
+    if (country.status === "suspected") {
+      return "rgba(255, 154, 190, 0.98)";
+    }
+
+    if (country.status === "monitoring") {
+      return "rgba(255, 176, 32, 0.95)";
+    }
+
+    return "rgba(255,255,255,0.22)";
   }
 
   function getCountryAltitude(countryName: string) {
     const country = findCountryInfo(countryName);
-    return country ? 0.0022 : 0.0008;
+
+    if (!country) {
+      return 0.0015;
+    }
+
+    if (country.status === "death" || country.status === "confirmed") {
+      return 0.006;
+    }
+
+    if (country.status === "suspected") {
+      return 0.0045;
+    }
+
+    if (country.status === "monitoring") {
+      return 0.004;
+    }
+
+    return 0.0015;
   }
 
-  function getCityMarkerClass(city: CityPoint) {
-    if (city.deaths > 0 || city.status === "death") return "death";
-    if (city.status === "suspected") return "suspected";
-    if (city.status === "monitoring") return "monitoring";
-    if (city.status === "confirmed") return "confirmed";
-    return "none";
+  function getCityMarkerColor(city: CityPoint) {
+    if (city.status === "death" || city.deaths > 0) {
+      return "#a40018";
+    }
+
+    if (city.status === "confirmed") {
+      return "#ff1732";
+    }
+
+    if (city.status === "suspected") {
+      return "#ff9abe";
+    }
+
+    if (city.status === "monitoring") {
+      return "#ffb020";
+    }
+
+    return "#777";
   }
 
-  function handleCountryClick(feature: any) {
+  function handleCountryClick(feature: object) {
     const name = getFeatureName(feature);
     const infectedInfo = findCountryInfo(name);
 
@@ -379,9 +430,9 @@ export default function OutbreakMap() {
     setSelectedCountry({
       country: name,
       cases: 0,
-      deaths: 0,
       suspected: 0,
       monitoring: 0,
+      deaths: 0,
       cities: [],
       status: "none",
       source: "No verified active signal currently entered for this country.",
@@ -395,27 +446,6 @@ export default function OutbreakMap() {
   function handleCityClick(city: CityPoint) {
     setSelectedCity(city);
     setSelectedCountry(findCountryInfo(city.country) || null);
-  }
-
-  function createCityMarker(city: CityPoint) {
-    const element = document.createElement("div");
-
-    element.className = "city-marker-wrap";
-
-    element.innerHTML = `
-      <div class="city-marker ${getCityMarkerClass(city)}">
-        <div class="city-marker-pulse"></div>
-        <div class="city-marker-dot"></div>
-        <div class="city-marker-label">${city.city}</div>
-      </div>
-    `;
-
-    element.onclick = (event) => {
-      event.stopPropagation();
-      handleCityClick(city);
-    };
-
-    return element;
   }
 
   function getTabTitle() {
@@ -446,7 +476,16 @@ export default function OutbreakMap() {
           [];
 
         if (Array.isArray(rawCities) && rawCities.length > 0) {
-          const mapped = rawCities.map(mapApiCity).filter((city) => {
+          const mapped = rawCities
+            .map((item: unknown, index: number) =>
+              mapApiCity(
+                item !== null && typeof item === "object"
+                  ? (item as Record<string, unknown>)
+                  : {},
+                index
+              )
+            )
+            .filter((city) => {
             if (!Number.isFinite(city.lat) || !Number.isFinite(city.lng)) {
               return false;
             }
@@ -488,11 +527,29 @@ export default function OutbreakMap() {
   useEffect(() => {
     function updateGlobeSize() {
       const box = globeWrapRef.current;
-      if (!box) return;
+
+      if (!box) {
+        return;
+      }
+
+      const isMobile = window.innerWidth <= 768;
+      const boxWidth = box.clientWidth;
+      const boxHeight = box.clientHeight;
+
+      if (isMobile) {
+        const size = Math.floor(Math.min(boxWidth, boxHeight));
+
+        setGlobeSize({
+          width: size,
+          height: size,
+        });
+
+        return;
+      }
 
       setGlobeSize({
-        width: Math.floor(box.clientWidth),
-        height: Math.floor(box.clientHeight),
+        width: Math.floor(boxWidth),
+        height: Math.floor(boxHeight),
       });
     }
 
@@ -501,7 +558,9 @@ export default function OutbreakMap() {
     const timeoutOne = window.setTimeout(updateGlobeSize, 100);
     const timeoutTwo = window.setTimeout(updateGlobeSize, 500);
 
-    const observer = new ResizeObserver(updateGlobeSize);
+    const observer = new ResizeObserver(() => {
+      updateGlobeSize();
+    });
 
     if (globeWrapRef.current) {
       observer.observe(globeWrapRef.current);
@@ -597,28 +656,52 @@ export default function OutbreakMap() {
               bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
               backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
               polygonsData={countries}
-              polygonCapColor={(feature: any) =>
+              polygonCapColor={(feature: object) =>
                 getCountryColor(getFeatureName(feature))
               }
-              polygonSideColor={() => "rgba(255, 23, 50, 0.025)"}
-              polygonStrokeColor={(feature: any) =>
+              polygonSideColor={(feature: object) =>
+                getCountryColor(getFeatureName(feature)).replace("0.58", "0.12")
+              }
+              polygonStrokeColor={(feature: object) =>
                 getCountryStroke(getFeatureName(feature))
               }
-              polygonAltitude={(feature: any) =>
+              polygonAltitude={(feature: object) =>
                 getCountryAltitude(getFeatureName(feature))
               }
               polygonLabel={() => ""}
               onPolygonClick={handleCountryClick}
-              pointsData={[]}
-              ringsData={[]}
+              pointsData={activeCities}
+              pointLat="lat"
+              pointLng="lng"
+              pointAltitude={0.004}
+              pointRadius={0.055}
+              pointResolution={24}
+              pointColor={(city: object) => getCityMarkerColor(city as CityPoint)}
+              pointLabel={(city: object) => {
+                const item = city as CityPoint;
+                return `${item.city}, ${item.country}`;
+              }}
+              onPointClick={(city: object) => handleCityClick(city as CityPoint)}
+              ringsData={activeCities}
+              ringLat="lat"
+              ringLng="lng"
+              ringAltitude={0.005}
+              ringColor={(city: object) => {
+                const item = city as CityPoint;
+                const color = getCityMarkerColor(item);
+
+                if (color === "#ff9abe") return "rgba(255,154,190,0.45)";
+                if (color === "#ffb020") return "rgba(255,176,32,0.45)";
+                if (color === "#a40018") return "rgba(164,0,24,0.45)";
+
+                return "rgba(255,23,50,0.45)";
+              }}
+              ringMaxRadius={0.9}
+              ringPropagationSpeed={0.45}
+              ringRepeatPeriod={1700}
               arcsData={[]}
               labelsData={[]}
-              htmlElementsData={activeCities}
-              htmlLat="lat"
-              htmlLng="lng"
-              htmlAltitude={0.001}
-              htmlElement={(city: any) => createCityMarker(city)}
-              htmlTransitionDuration={0}
+              htmlElementsData={[]}
             />
           </div>
         </div>
@@ -630,8 +713,7 @@ export default function OutbreakMap() {
 
           <p>
             Verified country overlays and clickable outbreak markers. Click any
-            country to view country statistics. Click any red marker to view city
-            details.
+            country to view country statistics.
           </p>
         </div>
 
@@ -658,7 +740,7 @@ export default function OutbreakMap() {
           <h3>RISK LEVELS</h3>
 
           <div>
-            <span className="dot red"></span> Confirmed or death signal
+            <span className="dot red"></span> Confirmed / death signal
           </div>
 
           <div>
@@ -666,7 +748,7 @@ export default function OutbreakMap() {
           </div>
 
           <div>
-            <span className="dot orange"></span> Monitoring / exposure signal
+            <span className="dot orange"></span> Monitoring signal
           </div>
 
           <div>
@@ -687,15 +769,10 @@ export default function OutbreakMap() {
 
               <p className="details-subtitle">{selectedCity.region}</p>
 
-              <div className="details-grid details-grid-four">
+              <div className="details-grid four">
                 <div>
                   <small>Cases</small>
                   <strong>{selectedCity.cases}</strong>
-                </div>
-
-                <div>
-                  <small>Deaths</small>
-                  <strong>{selectedCity.deaths}</strong>
                 </div>
 
                 <div>
@@ -706,6 +783,11 @@ export default function OutbreakMap() {
                 <div>
                   <small>Monitoring</small>
                   <strong>{selectedCity.monitoring}</strong>
+                </div>
+
+                <div>
+                  <small>Deaths</small>
+                  <strong>{selectedCity.deaths}</strong>
                 </div>
               </div>
 
@@ -727,15 +809,10 @@ export default function OutbreakMap() {
                 Country-level status from the current app database.
               </p>
 
-              <div className="details-grid details-grid-four">
+              <div className="details-grid four">
                 <div>
                   <small>Cases</small>
                   <strong>{selectedCountry.cases}</strong>
-                </div>
-
-                <div>
-                  <small>Deaths</small>
-                  <strong>{selectedCountry.deaths}</strong>
                 </div>
 
                 <div>
@@ -746,6 +823,11 @@ export default function OutbreakMap() {
                 <div>
                   <small>Monitoring</small>
                   <strong>{selectedCountry.monitoring}</strong>
+                </div>
+
+                <div>
+                  <small>Deaths</small>
+                  <strong>{selectedCountry.deaths}</strong>
                 </div>
               </div>
 
@@ -784,7 +866,7 @@ export default function OutbreakMap() {
             <span>🏙️</span>
             <strong>{stats.trackedCities}</strong>
             <p>TRACKED CITIES</p>
-            <small>visible markers</small>
+            <small>clickable map dots</small>
           </div>
 
           <div className="radar-stat">
@@ -796,7 +878,7 @@ export default function OutbreakMap() {
 
           <div className="radar-feed">
             <b>• LIVE FEED</b>
-            Supabase source monitoring active. Click any marker to view city
+            Supabase source monitoring active. Click any dot or country to view
             details.
           </div>
         </section>
@@ -836,8 +918,8 @@ export default function OutbreakMap() {
               <h2>Instant outbreak alerts</h2>
 
               <p>
-                Get notified when a new verified hantavirus signal appears in
-                the database.
+                Get notified when a new verified hantavirus signal appears in the
+                database.
               </p>
 
               <div className="alert-price-box">
@@ -885,19 +967,31 @@ function renderTabContent(
           body={[
             `Stored signals: ${trackedCities.filter(hasSignal).length}`,
             `Countries with stored signals: ${infectedCountries.length}`,
-            `Total cases: ${trackedCities.reduce((sum, city) => sum + city.cases, 0)}`,
-            `Total deaths: ${trackedCities.reduce((sum, city) => sum + city.deaths, 0)}`,
-            `Total suspected: ${trackedCities.reduce((sum, city) => sum + city.suspected, 0)}`,
-            `Total monitoring: ${trackedCities.reduce((sum, city) => sum + city.monitoring, 0)}`,
+            `Total confirmed cases: ${trackedCities.reduce(
+              (sum, city) => sum + city.cases,
+              0
+            )}`,
+            `Total suspected: ${trackedCities.reduce(
+              (sum, city) => sum + city.suspected,
+              0
+            )}`,
+            `Total monitoring: ${trackedCities.reduce(
+              (sum, city) => sum + city.monitoring,
+              0
+            )}`,
+            `Total deaths: ${trackedCities.reduce(
+              (sum, city) => sum + city.deaths,
+              0
+            )}`,
           ]}
         />
 
         <InfoCard
           title="Data rule"
           body={[
-            "Confirmed cases, suspected cases, deaths and monitoring locations are separated by status.",
+            "Confirmed cases, suspected cases, deaths and monitoring/exposure locations are separated by status.",
             "The app should never invent numbers without a stored database signal.",
-            "City markers are flat HTML markers, not 3D columns.",
+            "Country color follows the strongest stored status: death, confirmed, suspected, monitoring.",
           ]}
         />
 
@@ -905,7 +999,7 @@ function renderTabContent(
           title="Countries currently tracked"
           body={infectedCountries.map(
             (country) =>
-              `${country.country}: ${country.cases} case(s), ${country.deaths} death(s), ${country.suspected} suspected, ${country.monitoring} monitoring, status: ${country.status}`
+              `${country.country}: ${country.cases} confirmed, ${country.suspected} suspected, ${country.monitoring} monitoring, ${country.deaths} deaths, status: ${country.status}`
           )}
         />
       </div>
@@ -920,10 +1014,10 @@ function renderTabContent(
             key={city.id}
             title={`${city.city}, ${city.country}`}
             body={[
-              `Cases: ${city.cases}`,
-              `Deaths: ${city.deaths}`,
+              `Confirmed cases: ${city.cases}`,
               `Suspected: ${city.suspected}`,
               `Monitoring: ${city.monitoring}`,
+              `Deaths: ${city.deaths}`,
               `Status: ${city.status}`,
               `Source: ${city.source}`,
               city.summary,
@@ -1042,16 +1136,18 @@ function renderTabContent(
         <InfoCard
           title="Why does a country show red?"
           body={[
-            "A country shows red when this app database has at least one stored hantavirus signal for that country.",
-            "It does not mean the whole country is broadly infected.",
+            "A country shows red only when this app database has a confirmed or death signal for that country.",
+            "Suspected signals are pink.",
+            "Monitoring signals are orange.",
           ]}
         />
 
         <InfoCard
-          title="Why are markers flat?"
+          title="Why does a country show pink?"
           body={[
-            "Flat markers are used because 3D points in react-globe.gl look like vertical columns.",
-            "This keeps the map cleaner and more professional.",
+            "Pink means suspected signal.",
+            "It does not mean confirmed cases.",
+            "It also does not mean the whole country is broadly infected.",
           ]}
         />
 

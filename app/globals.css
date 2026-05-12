@@ -168,26 +168,24 @@ button {
   display: block !important;
 }
 
-/* CUSTOM MAP MARKERS - FLAT DOTS, NO 3D COLUMNS, NO FLOATING PINS */
+/* FLAT CITY DOT MARKERS */
 
-.city-marker-wrap {
-  width: 26px;
-  height: 26px;
-  transform: translate(-50%, -50%);
+.city-dot-marker {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  margin-left: -17px;
+  margin-top: -17px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   pointer-events: auto;
   cursor: pointer;
-  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.55));
+  transform: translateZ(0);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55));
 }
 
-.city-marker {
-  position: relative;
-  width: 26px;
-  height: 26px;
-  transform-origin: center center;
-  animation: markerPop 0.22s ease-out both;
-}
-
-.city-marker-dot {
+.city-dot-core {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -195,125 +193,121 @@ button {
   height: 14px;
   transform: translate(-50%, -50%);
   border-radius: 999px;
-  border: 3px solid rgba(255, 255, 255, 0.95);
   background: #ff1732;
+  border: 2px solid rgba(255, 255, 255, 0.96);
   box-shadow:
-    0 0 0 2px rgba(255, 23, 50, 0.25),
-    0 0 18px rgba(255, 23, 50, 0.95);
+    0 0 0 3px rgba(255, 23, 50, 0.22),
+    0 0 18px rgba(255, 23, 50, 0.9);
+  z-index: 2;
 }
 
-.city-marker-pulse {
+.city-dot-ring {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   transform: translate(-50%, -50%);
   border-radius: 999px;
-  background: rgba(255, 23, 50, 0.24);
-  animation: markerPulse 1.7s ease-out infinite;
-  pointer-events: none;
+  border: 2px solid rgba(255, 23, 50, 0.55);
+  animation: cityDotPulse 1.7s ease-out infinite;
+  z-index: 1;
 }
 
-.city-marker-label {
+.city-dot-label {
   position: absolute;
   left: 50%;
-  top: -30px;
+  top: -28px;
   transform: translateX(-50%);
-  white-space: nowrap;
-  padding: 5px 8px;
+  padding: 6px 9px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   color: white;
   font-size: 10px;
   line-height: 1;
   font-weight: 900;
-  letter-spacing: 0.3px;
+  white-space: nowrap;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s ease, transform 0.15s ease;
   backdrop-filter: blur(10px);
 }
 
-.city-marker-wrap:hover .city-marker-label {
+.city-dot-marker:hover .city-dot-label {
   opacity: 1;
   transform: translateX(-50%) translateY(-2px);
 }
 
-.city-marker.confirmed .city-marker-dot {
+.city-dot-marker.confirmed .city-dot-core {
   background: #ff1732;
   box-shadow:
-    0 0 0 2px rgba(255, 23, 50, 0.25),
-    0 0 18px rgba(255, 23, 50, 0.95);
+    0 0 0 3px rgba(255, 23, 50, 0.22),
+    0 0 18px rgba(255, 23, 50, 0.9);
 }
 
-.city-marker.death .city-marker-dot {
+.city-dot-marker.confirmed .city-dot-ring {
+  border-color: rgba(255, 23, 50, 0.58);
+}
+
+.city-dot-marker.death .city-dot-core {
   background: #a40018;
   box-shadow:
-    0 0 0 2px rgba(164, 0, 24, 0.28),
-    0 0 18px rgba(255, 23, 50, 0.85);
+    0 0 0 3px rgba(164, 0, 24, 0.28),
+    0 0 20px rgba(255, 23, 50, 0.95);
 }
 
-.city-marker.suspected .city-marker-dot {
+.city-dot-marker.death .city-dot-ring {
+  border-color: rgba(164, 0, 24, 0.65);
+}
+
+.city-dot-marker.suspected .city-dot-core {
   background: #ff9aa5;
   box-shadow:
-    0 0 0 2px rgba(255, 154, 165, 0.25),
-    0 0 18px rgba(255, 154, 165, 0.85);
+    0 0 0 3px rgba(255, 154, 165, 0.24),
+    0 0 18px rgba(255, 154, 165, 0.82);
 }
 
-.city-marker.monitoring .city-marker-dot {
+.city-dot-marker.suspected .city-dot-ring {
+  border-color: rgba(255, 154, 165, 0.62);
+}
+
+.city-dot-marker.monitoring .city-dot-core {
   background: #ffb020;
   box-shadow:
-    0 0 0 2px rgba(255, 176, 32, 0.25),
-    0 0 18px rgba(255, 176, 32, 0.85);
+    0 0 0 3px rgba(255, 176, 32, 0.24),
+    0 0 18px rgba(255, 176, 32, 0.82);
 }
 
-.city-marker.none .city-marker-dot {
+.city-dot-marker.monitoring .city-dot-ring {
+  border-color: rgba(255, 176, 32, 0.62);
+}
+
+.city-dot-marker.none .city-dot-core {
   background: #555;
   box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.08),
+    0 0 0 3px rgba(255, 255, 255, 0.08),
     0 0 12px rgba(255, 255, 255, 0.18);
 }
 
-.city-marker.suspected .city-marker-pulse {
-  background: rgba(255, 154, 165, 0.22);
+.city-dot-marker.none .city-dot-ring {
+  border-color: rgba(255, 255, 255, 0.24);
 }
 
-.city-marker.monitoring .city-marker-pulse {
-  background: rgba(255, 176, 32, 0.2);
-}
-
-.city-marker.death .city-marker-pulse {
-  background: rgba(164, 0, 24, 0.25);
-}
-
-@keyframes markerPulse {
+@keyframes cityDotPulse {
   0% {
-    opacity: 0.65;
-    transform: translate(-50%, -50%) scale(0.65);
+    transform: translate(-50%, -50%) scale(0.75);
+    opacity: 0.85;
   }
 
   70% {
-    opacity: 0;
     transform: translate(-50%, -50%) scale(1.7);
+    opacity: 0;
   }
 
   100% {
-    opacity: 0;
     transform: translate(-50%, -50%) scale(1.7);
-  }
-}
-
-@keyframes markerPop {
-  from {
     opacity: 0;
-    transform: scale(0.4);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
   }
 }
 
@@ -464,14 +458,6 @@ button {
   background: #ffb020;
 }
 
-.dot.purple {
-  background: #9b5cff;
-}
-
-.dot.blue {
-  background: #38bdf8;
-}
-
 .dot.gray {
   background: #555;
 }
@@ -485,7 +471,7 @@ button {
   transform: translateY(-30%);
   z-index: 18;
   width: 350px;
-  max-height: 520px;
+  max-height: 510px;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 22px;
@@ -534,8 +520,8 @@ button {
   margin-bottom: 14px;
 }
 
-.details-grid-four {
-  grid-template-columns: repeat(4, 1fr);
+.details-grid.four {
+  grid-template-columns: 1fr 1fr;
 }
 
 .details-grid div {
@@ -553,19 +539,6 @@ button {
 
 .details-grid strong {
   font-size: 24px;
-}
-
-.details-grid-four div {
-  padding: 11px 9px;
-}
-
-.details-grid-four small {
-  font-size: 9px;
-  line-height: 1.1;
-}
-
-.details-grid-four strong {
-  font-size: 20px;
 }
 
 .details-box {
@@ -1079,44 +1052,25 @@ button {
     display: block;
   }
 
-  .radar-globe-stage {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+  .city-dot-marker {
+    width: 28px;
+    height: 28px;
+    margin-left: -14px;
+    margin-top: -14px;
   }
 
-  .radar-globe-stage > div {
-    width: 100% !important;
-    height: 100% !important;
-  }
-
-  .radar-globe canvas {
-    display: block !important;
-  }
-
-  .city-marker-wrap {
-    width: 22px;
-    height: 22px;
-  }
-
-  .city-marker {
-    width: 22px;
-    height: 22px;
-  }
-
-  .city-marker-dot {
+  .city-dot-core {
     width: 12px;
     height: 12px;
-    border-width: 2px;
+    border-width: 1.5px;
   }
 
-  .city-marker-pulse {
-    width: 22px;
-    height: 22px;
+  .city-dot-ring {
+    width: 21px;
+    height: 21px;
   }
 
-  .city-marker-label {
+  .city-dot-label {
     display: none;
   }
 
@@ -1154,10 +1108,6 @@ button {
     gap: 12px;
   }
 
-  .details-grid-four {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
   .details-grid div {
     padding: 18px;
     border-radius: 18px;
@@ -1168,14 +1118,6 @@ button {
   }
 
   .details-grid strong {
-    font-size: 34px;
-  }
-
-  .details-grid-four small {
-    font-size: 14px;
-  }
-
-  .details-grid-four strong {
     font-size: 34px;
   }
 
@@ -1312,4 +1254,8 @@ button {
   .radar-globe {
     height: min(calc(100vw - 20px), 340px);
   }
+}
+
+.details-grid.four {
+  grid-template-columns: repeat(2, 1fr);
 }

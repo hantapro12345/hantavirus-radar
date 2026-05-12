@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Globe from "react-globe.gl";
+import type { GlobeMethods } from "react-globe.gl";
 
 type CountryFeature = {
   type: string;
@@ -100,7 +101,7 @@ const menuItems = [
 ];
 
 export default function HantavirusGlobe() {
-  const globeRef = useRef<any>(null);
+  const globeRef = useRef<GlobeMethods | undefined>(undefined);
 
   const [countries, setCountries] = useState<CountryFeature[]>([]);
   const [size, setSize] = useState({
